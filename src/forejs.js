@@ -5,66 +5,88 @@ module.exports = fore;
  */
 function fore(functions) {
   if (typeof functions === "object") {
-    var graph = {};
-    var roots = [];
-    Object.getOwnPropertyNames(functions).forEach(function (name) {
-      var fn = functions[name];
-
-      getOrCreateNode(graph, name).function = fn;
-
-      var numberOfInjections = 0;
-
-      var injector = fn.$injector;
-      if (injector instanceof Injector) {
-        injector.injections.forEach(function (injection) {
-          if (injection instanceof Injection) {
-            if (connect(graph, injection.id, name)) {
-              numberOfInjections++;
-            }
-          }
-        });
-
-        var thisInjection = injector.thisInjection;
-        if (thisInjection && thisInjection instanceof Injection) {
-          if (connect(graph, thisInjection.id, name)) {
-            numberOfInjections++;
-          }
-        }
-      }
-
-      if (numberOfInjections === 0) {
-        roots.push(getOrCreateNode(graph, name));
-      }
-
-    });
-
-    var results = {};
-    roots.forEach(function (node) {
-      node.execute(results);
-    });
-
-
+    dependentExecution(functions);
   } else {
-    // TODO: simple case: chain all function calls
-    for (var i = 0; i < arguments.length; i++) {
-      var fn = arguments[i];
-
-
-    }
+    simpleChain(arguments);
   }
 }
 
 /**
+ * @param {Object.<String, function>} functions
+ */
+function dependentExecution(functions) {
+  var graph = {};
+  var roots = [];
+  Object.getOwnPropertyNames(functions).forEach(function (name) {
+    var fn = functions[name];
+
+    var executorNode = getOrCreateNode(graph, name);
+    executorNode.function = fn;
+
+    var numberOfInjections = 0;
+
+    var injector = fn.$injector;
+    if (injector instanceof Injector) {
+      injector.injections.forEach(function (injection) {
+        if (injection instanceof Injection) {
+          if (connect(getOrCreateNode(graph, injection.id), executorNode)) {
+            numberOfInjections++;
+          }
+        }
+      });
+
+      var thisInjection = injector.thisInjection;
+      if (thisInjection && thisInjection instanceof Injection) {
+        if (connect(getOrCreateNode(graph, thisInjection.id), executorNode)) {
+          numberOfInjections++;
+        }
+      }
+    }
+
+    if (numberOfInjections === 0) {
+      roots.push(executorNode);
+    }
+
+  });
+
+  var results = {};
+  roots.forEach(function (node) {
+    node.execute(results);
+  });
+}
+
+/**
+ * @param {*} functions
+ */
+function simpleChain(functions) {
+  var currentIndex = 0;
+  function callback(err, res) {
+    if (err !== null && err !== void 0) {
+      // TODO: error case
+    } else {
+      currentIndex++;
+      if (currentIndex < functions.length) {
+        var fn = functions[currentIndex];
+        if (fn.$injector instanceof Injector) {
+          fn.$injector.injections.push(res);
+          fn(callback);
+        } else {
+          fn(res, callback);
+        }
+      }
+    }
+  }
+
+  functions[0](callback);
+}
+
+/**
  *
- * @param {Object.<String, ExecutorNode>} graph
- * @param {String} from
- * @param {String} to
+ * @param {ExecutorNode} fromNode
+ * @param {ExecutorNode} toNode
  * @return {boolean} false iff this dependency already existed
  */
-function connect(graph, from, to) {
-  var fromNode = getOrCreateNode(graph, from);
-  var toNode = getOrCreateNode(graph, to);
-
+function connect(fromNode, toNode) {
   if (fromNode.dependents.indexOf(toNode) < 0) {
     fromNode.dependents.push(toNode);
     toNode.dependencies.push(fromNode);
@@ -110,7 +132,7 @@ ExecutorNode.prototype.execute = function execute(results) {
   }
 
   fn(function (err, res) {
-    if (err != null) {
+    if (err !== null && err !== void 0) {
       // TODO: error case
     } else {
       results[this.id] = res;

@@ -26,7 +26,7 @@ function plus(n, m, callback) {
 
 function error(error, callback) {
   setTimeout(function () {
-    callback(error || "error")
+    callback(error)
   }, 0)
 }
 
