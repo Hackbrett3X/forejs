@@ -400,7 +400,18 @@ describe("Promise support", function () {
   });
 });
 
-describe("anonymous functions and array dependencies", function () {
+describe("syntactic sugar: injections as array", function () {
+  it("simple chain", function (done) {
+    fore(
+        one,
+        [1, plus],
+        function (two) {
+          expect(two).to.equal(2);
+          done();
+        }
+    )
+  });
+
   it("end position", function (done) {
     fore({
       one: one,
@@ -422,6 +433,17 @@ describe("anonymous functions and array dependencies", function () {
         expect(two).to.equal(2);
         expect(callback).to.be.a("function");
         expect(arguments.length).to.equal(3);
+        done();
+      }]
+    })
+  });
+
+  it("mixed refs and real arguments", function (done) {
+    fore({
+      one: one,
+      two: [1, "one", plus],
+      _: ["two", function (two) {
+        expect(two).to.equal(2);
         done();
       }]
     })

@@ -24,14 +24,7 @@ function dependentExecution(functions) {
   var graph = {};
   var roots = [];
   Object.getOwnPropertyNames(functions).forEach(function (name) {
-    var fn = functions[name];
-
-    if (Array.isArray(fn)) {
-      // desugar ["a", "b", function (a, b) {...}]
-      fn = fn[fn.length - 1].inject.args.apply(null, fn.slice(0, fn.length - 1).map(function (arg) {
-        return fore.ref(arg);
-      }));
-    }
+    var fn = desugar(functions[name]);
 
     var executorNode = getOrCreateNode(graph, name);
     executorNode.function = fn;
@@ -76,6 +69,8 @@ function dependentExecution(functions) {
  * @param {*} functions
  */
 function simpleChain(functions) {
+  functions = Array.prototype.map.call(functions, desugar);
+
   var currentIndex = 0;
 
   function callback(err, res) {
@@ -229,6 +224,16 @@ function handleError(injector, err) {
   if (injector instanceof Injector && injector.catch !== null) {
     injector.catch(err);
   }
+}
+
+function desugar(fn) {
+  if (Array.isArray(fn)) {
+    // desugar ["a", "b", function (a, b) {...}]
+    fn = fn[fn.length - 1].inject.args.apply(null, fn.slice(0, fn.length - 1).map(function (arg) {
+      return typeof arg === "string" ? fore.ref(arg) : arg;
+    }));
+  }
+  return fn;
 }
 
 /**
