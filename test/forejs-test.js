@@ -24,6 +24,13 @@ function plus(n, m, callback) {
   }, 0);
 }
 
+function toUpperCase(callback) {
+  var str = this;
+  setTimeout(function () {
+    callback(null, str.toUpperCase());
+  }, 0);
+}
+
 function error(error, callback) {
   setTimeout(function () {
     callback(error)
@@ -73,6 +80,49 @@ describe("General functionality", function () {
             done();
           }
       )
+    });
+  });
+
+  describe("This injections", function () {
+    it("simple chain", function (done) {
+      fore(
+          function (callback) {
+            callback(null, "abc")
+          },
+          toUpperCase.inject.this(),
+          function (res) {
+            expect(res).to.equal("ABC");
+            done();
+          }
+      )
+    });
+
+    it("dependencies", function (done) {
+      fore({
+        str: function (callback) {
+          callback(null, "abc")
+        },
+        upperCase: toUpperCase.inject.this(fore.get("str")),
+        _: (function (res) {
+          expect(res).to.equal("ABC");
+          done();
+        }).inject.args(fore.get("upperCase"))
+      })
+    });
+
+    it("dependencies - combined with args", function (done) {
+      fore({
+        str: function (callback) {
+          callback(null, "abc")
+        },
+        res: (function (str, callback) {
+          callback(null, this.toUpperCase() + str.toUpperCase());
+        }).inject.this(fore.get("str")).args(fore.get("str")),
+        _: (function (res) {
+          expect(res).to.equal("ABCABC");
+          done();
+        }).inject.args(fore.get("res"))
+      })
     });
   });
 

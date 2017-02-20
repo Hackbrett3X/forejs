@@ -72,21 +72,27 @@ function simpleChain(functions) {
     }
 
     currentIndex++;
-    if (currentIndex < functions.length) {
-      var fn = functions[currentIndex];
-      var injector = fn.$injector;
-      if (injector instanceof Injector) {
-        if (injector.injections === null) {
-          injector.injections = [res];
-        } else {
-          injector.injections.push(res);
-        }
-
-        fn(callback);
-      } else {
-        fn(res, callback);
-      }
+    if (currentIndex >= functions.length) {
+      return;
     }
+
+    var fn = functions[currentIndex];
+    var injector = fn.$injector;
+    if (!(injector instanceof Injector)) {
+      fn(res, callback);
+      return;
+    }
+
+    if (injector.thisInjection === void 0) {
+      // inject.this has been called without args -> pass result as "this"
+      injector.thisInjection = res;
+    } else if (injector.injections === null) {
+      injector.injections = [res];
+    } else {
+      injector.injections.push(res);
+    }
+
+    fn(callback);
   }
 
   functions[0](callback);
