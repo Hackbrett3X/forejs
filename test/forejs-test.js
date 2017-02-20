@@ -4,8 +4,6 @@ var describe = require("mocha").describe;
 
 var fore = require("../src/forejs");
 
-// TODO: multiple usage
-
 function one(callback) {
   setTimeout(function () {
     callback(null, 1);
@@ -242,6 +240,18 @@ describe("General functionality", function () {
         }).inject.args(fore.get("plus"))
       })
     });
+
+    it("plus(plusOne(one), one)", function (done) {
+      fore({
+        one: one,
+        two: plusOne.inject.args(fore.get("one")),
+        three: plus.inject.args(fore.get("two"), fore.get("one")),
+        _: (function (res) {
+          expect(res).to.equal(3);
+          done();
+        }).inject.args(fore.get("three"))
+      })
+    })
   });
 });
 
