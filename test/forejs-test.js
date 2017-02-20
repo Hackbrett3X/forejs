@@ -76,8 +76,8 @@ describe("General functionality", function () {
     });
   });
 
-  describe("Catching errors", function (done) {
-    it("catch", function () {
+  describe("Catching errors", function () {
+    it("catch", function (done) {
       fore(
           error.inject.args("msg").catch(function (error) {
             expect(error).to.equal("msg");
@@ -86,7 +86,7 @@ describe("General functionality", function () {
       );
     });
 
-    it("catch - stop propagation on error", function () {
+    it("catch - stop propagation on error", function (done) {
       fore(
           error.inject.args("msg").catch(function (error) {
             expect(error).to.equal("msg");
@@ -97,6 +97,70 @@ describe("General functionality", function () {
             done();
           }
       );
+    });
+
+    it("catch - with dependencies", function (done) {
+      fore({
+        msg: function (callback) {
+          callback(null, "msg")
+        },
+        error: error.inject.args(fore.get("msg")).catch(function (error) {
+          expect(error).to.equal("msg");
+          done();
+        }),
+        _: (function () {
+          expect.fail();
+          done();
+        }).inject.args(fore.get("error"))
+      });
+    });
+
+    it("general catch - first function throws error", function (done) {
+      fore.try(
+          error.inject.args("msg"),
+          one,
+          function () {
+            expect.fail();
+            done();
+          }
+      ).catch(function (err) {
+        expect(err).to.equal("msg");
+        done();
+      })
+    });
+
+    it("general catch - second function throws error", function (done) {
+      fore.try(
+          one,
+          function (one, cb) {
+            expect(one).to.equal(1);
+            cb(null, "msg");
+          },
+          error,
+          function () {
+            expect.fail();
+            done();
+          }
+      ).catch(function (err) {
+        expect(err).to.equal("msg");
+        done();
+      })
+    });
+
+    it("general catch - with dependencies", function (done) {
+      fore.try({
+        msg: function (callback) {
+          callback(null, "msg")
+        },
+        error: error.inject.args(fore.get("msg")),
+        _: (function () {
+          expect.fail();
+          done();
+        }).inject.args(fore.get("error"))
+      }).catch(function (error) {
+        expect(error).to.equal("msg");
+        done();
+      });
     });
   });
 

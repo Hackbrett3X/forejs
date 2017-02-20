@@ -27,13 +27,17 @@ function dependentExecution(functions) {
 
     var injector = fn.$injector;
     if (injector instanceof Injector) {
-      injector.injections.forEach(function (injection) {
-        if (injection instanceof Injection) {
-          if (connect(getOrCreateNode(graph, injection.id), executorNode)) {
-            numberOfInjections++;
+
+      var injections = injector.injections;
+      if (injections !== null) {
+        injections.forEach(function (injection) {
+          if (injection instanceof Injection) {
+            if (connect(getOrCreateNode(graph, injection.id), executorNode)) {
+              numberOfInjections++;
+            }
           }
-        }
-      });
+        });
+      }
 
       var thisInjection = injector.thisInjection;
       if (thisInjection && thisInjection instanceof Injection) {
@@ -60,19 +64,27 @@ function dependentExecution(functions) {
  */
 function simpleChain(functions) {
   var currentIndex = 0;
+
   function callback(err, res) {
     if (err !== null && err !== void 0) {
-      // TODO: error case
-    } else {
-      currentIndex++;
-      if (currentIndex < functions.length) {
-        var fn = functions[currentIndex];
-        if (fn.$injector instanceof Injector) {
-          fn.$injector.injections.push(res);
-          fn(callback);
+      handleError(functions[currentIndex].$injector, err);
+      return;
+    }
+
+    currentIndex++;
+    if (currentIndex < functions.length) {
+      var fn = functions[currentIndex];
+      var injector = fn.$injector;
+      if (injector instanceof Injector) {
+        if (injector.injections === null) {
+          injector.injections = [res];
         } else {
-          fn(res, callback);
+          injector.injections.push(res);
         }
+
+        fn(callback);
+      } else {
+        fn(res, callback);
       }
     }
   }
@@ -127,13 +139,14 @@ function ExecutorNode(id) {
 ExecutorNode.prototype.execute = function execute(results) {
   var fn = this.function;
 
-  if (fn.$injector instanceof Injector) {
-    fn.$injector.results = results;
+  var injector = fn.$injector;
+  if (injector instanceof Injector) {
+    injector.results = results;
   }
 
   fn(function (err, res) {
     if (err !== null && err !== void 0) {
-      // TODO: error case
+      handleError(injector, err);
     } else {
       results[this.id] = res;
       this.dependents.forEach(function (node) {
@@ -153,6 +166,48 @@ ExecutorNode.prototype.notify = function (results) {
     this.execute(results);
   }
 };
+
+fore.try = function () {
+  var args = arguments;
+  return {
+    "catch": function (errorHandler) {
+      var functions = args[0];
+      if (typeof functions === "object") {
+        Object.getOwnPropertyNames(args[0]).forEach(function (name) {
+          functions[name] = injectErrorHandler(functions[name], errorHandler);
+        });
+        fore(functions);
+      } else {
+        var newArgs = new Array(args.length);
+        for (var i = 0; i < args.length; i++) {
+          newArgs[i] = injectErrorHandler(args[i], errorHandler);
+        }
+        fore.apply(null, newArgs);
+      }
+
+    }
+  }
+};
+
+function injectErrorHandler(fn, errorHandler) {
+  var injector = fn.$injector;
+  if (injector instanceof Injector) {
+    injector.catch = errorHandler;
+    return fn;
+  } else {
+    return fn.inject.catch(errorHandler);
+  }
+}
+
+/**
+ * @param {Injector|undefined} injector
+ * @param {*} err
+ */
+function handleError(injector, err) {
+  if (injector instanceof Injector && injector.catch !== null) {
+    injector.catch(err);
+  }
+}
 
 /**
  * @param {String} id
@@ -184,6 +239,7 @@ function Injector() {
   this.injections = null;
   this.thisInjection = null;
   this.results = null;
+  this.catch = null;
 }
 
 /**
@@ -206,10 +262,16 @@ function inject() {
             thisInjection.resolve(injector.results) : thisInjection);
 
     var injections = injector.injections;
-    var args = new Array(injections.length + 1);
-    injections.forEach(function (arg, i) {
-      args[i] = arg instanceof Injection ? arg.resolve(injector.results) : arg;
-    });
+    var args;
+    if (injections !== null) {
+      args = new Array(injections.length + 1);
+      injections.forEach(function (arg, i) {
+        args[i] = arg instanceof Injection ? arg.resolve(injector.results) : arg;
+      });
+    } else {
+      args = new Array(1);
+    }
+
     args[args.length - 1] = callback;
 
     originalFunction.apply(thisArg, args);
@@ -225,6 +287,11 @@ function inject() {
 
   fn.this = function ths(object) {
     injector.thisInjection = object;
+    return fn;
+  };
+
+  fn.catch = function ctch(errorHandler) {
+    injector.catch = errorHandler;
     return fn;
   };
 
