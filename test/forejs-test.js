@@ -100,11 +100,11 @@ describe("General functionality", function () {
         str: function (callback) {
           callback(null, "abc")
         },
-        upperCase: toUpperCase.inject.this(fore.get("str")),
+        upperCase: toUpperCase.inject.this(fore.ref("str")),
         _: (function (res) {
           expect(res).to.equal("ABC");
           done();
-        }).inject.args(fore.get("upperCase"))
+        }).inject.args(fore.ref("upperCase"))
       })
     });
 
@@ -115,11 +115,11 @@ describe("General functionality", function () {
         },
         res: (function (str, callback) {
           callback(null, this.toUpperCase() + str.toUpperCase());
-        }).inject.this(fore.get("str")).args(fore.get("str")),
+        }).inject.this(fore.ref("str")).args(fore.ref("str")),
         _: (function (res) {
           expect(res).to.equal("ABCABC");
           done();
-        }).inject.args(fore.get("res"))
+        }).inject.args(fore.ref("res"))
       })
     });
   });
@@ -152,14 +152,14 @@ describe("General functionality", function () {
         msg: function (callback) {
           callback(null, "msg")
         },
-        error: error.inject.args(fore.get("msg")).catch(function (error) {
+        error: error.inject.args(fore.ref("msg")).catch(function (error) {
           expect(error).to.equal("msg");
           done();
         }),
         _: (function () {
           expect.fail();
           done();
-        }).inject.args(fore.get("error"))
+        }).inject.args(fore.ref("error"))
       });
     });
 
@@ -200,11 +200,11 @@ describe("General functionality", function () {
         msg: function (callback) {
           callback(null, "msg")
         },
-        error: error.inject.args(fore.get("msg")),
+        error: error.inject.args(fore.ref("msg")),
         _: (function () {
           expect.fail();
           done();
-        }).inject.args(fore.get("error"))
+        }).inject.args(fore.ref("error"))
       }).catch(function (error) {
         expect(error).to.equal("msg");
         done();
@@ -217,11 +217,11 @@ describe("General functionality", function () {
       fore({
         one: one,
         onePlusOne: plusOne.inject.args(1),
-        plus: plus.inject.args(fore.get("one"), fore.get("onePlusOne")),
+        plus: plus.inject.args(fore.ref("one"), fore.ref("onePlusOne")),
         _: (function (plus) {
           expect(plus).to.equal(3);
           done();
-        }).inject.args(fore.get("plus"))
+        }).inject.args(fore.ref("plus"))
 
         // maybe some sugar:
         // _: ["plus", function () {
@@ -233,23 +233,23 @@ describe("General functionality", function () {
     it("plus(plusOne(1), plusOne(1)) - duplicate dependency", function (done) {
       fore({
         onePlusOne: plusOne.inject.args(1),
-        plus: plus.inject.args(fore.get("onePlusOne"), fore.get("onePlusOne")),
+        plus: plus.inject.args(fore.ref("onePlusOne"), fore.ref("onePlusOne")),
         _: (function (plus) {
           expect(plus).to.equal(4);
           done();
-        }).inject.args(fore.get("plus"))
+        }).inject.args(fore.ref("plus"))
       })
     });
 
     it("plus(plusOne(one), one)", function (done) {
       fore({
         one: one,
-        two: plusOne.inject.args(fore.get("one")),
-        three: plus.inject.args(fore.get("two"), fore.get("one")),
+        two: plusOne.inject.args(fore.ref("one")),
+        three: plus.inject.args(fore.ref("two"), fore.ref("one")),
         _: (function (res) {
           expect(res).to.equal(3);
           done();
-        }).inject.args(fore.get("three"))
+        }).inject.args(fore.ref("three"))
       })
     })
   });
@@ -330,30 +330,30 @@ describe("Promise support", function () {
         _: (function (res) {
           expect(res).to.equal(1);
           done();
-        }).inject.args(fore.get("one"))
+        }).inject.args(fore.ref("one"))
       })
     });
 
     it("one plusOne", function (done) {
       fore({
         one: promiseOne,
-        two: promisePlusOne.inject.args(fore.get("one")),
+        two: promisePlusOne.inject.args(fore.ref("one")),
         _: (function (res) {
           expect(res).to.equal(2);
           done();
-        }).inject.args(fore.get("two"))
+        }).inject.args(fore.ref("two"))
       })
     });
 
     it("one plusOne plus(1)", function (done) {
       fore({
         one: promiseOne,
-        two: promisePlusOne.inject.args(fore.get("one")),
-        three: promisePlus.inject.args(fore.get("two"), 1),
+        two: promisePlusOne.inject.args(fore.ref("one")),
+        three: promisePlus.inject.args(fore.ref("two"), 1),
         _: (function (res) {
           expect(res).to.equal(3);
           done();
-        }).inject.args(fore.get("three"))
+        }).inject.args(fore.ref("three"))
       })
     });
   });
@@ -381,7 +381,7 @@ describe("Promise support", function () {
         _: (function () {
           expect.fail();
           done();
-        }).inject.args(fore.get("err"))
+        }).inject.args(fore.ref("err"))
       })
     });
 

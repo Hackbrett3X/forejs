@@ -243,7 +243,7 @@ function supportPromise(promise, callback) {
 /**
  * @param {String} id
  */
-fore.get = function get(id) {
+fore.ref = function ref(id) {
   return new Injection(id);
 };
 
