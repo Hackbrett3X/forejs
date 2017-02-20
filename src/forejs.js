@@ -1,6 +1,12 @@
 module.exports = fore;
 
 /**
+ * @callback Callback
+ * @param {*} err
+ * @param {*=} res
+ */
+
+/**
  * @param {...*} functions
  */
 function fore(functions) {
@@ -79,7 +85,7 @@ function simpleChain(functions) {
     var fn = functions[currentIndex];
     var injector = fn.$injector;
     if (!(injector instanceof Injector)) {
-      fn(res, callback);
+      supportPromise(fn(res, callback), callback);
       return;
     }
 
@@ -92,10 +98,10 @@ function simpleChain(functions) {
       injector.injections.push(res);
     }
 
-    fn(callback);
+    supportPromise(fn(callback), callback);
   }
 
-  functions[0](callback);
+  supportPromise(functions[0](callback), callback);
 }
 
 /**
@@ -150,16 +156,19 @@ ExecutorNode.prototype.execute = function execute(results) {
     injector.results = results;
   }
 
-  fn(function (err, res) {
+  var node = this;
+  function callback(err, res) {
     if (err !== null && err !== void 0) {
       handleError(injector, err);
     } else {
-      results[this.id] = res;
-      this.dependents.forEach(function (node) {
+      results[node.id] = res;
+      node.dependents.forEach(function (node) {
         node.notify(results);
       });
     }
-  }.bind(this))
+  }
+
+  supportPromise(fn(callback), callback);
 };
 
 /**
@@ -212,6 +221,22 @@ function injectErrorHandler(fn, errorHandler) {
 function handleError(injector, err) {
   if (injector instanceof Injector && injector.catch !== null) {
     injector.catch(err);
+  }
+}
+
+/**
+ * @param {Promise|undefined} promise
+ * @param {Callback} callback
+ */
+function supportPromise(promise, callback) {
+  if (promise instanceof Promise) {
+    promise
+        .then(function (res) {
+          callback(null, res);
+        })
+        .catch(function (err) {
+          callback(err);
+        });
   }
 }
 
@@ -280,7 +305,7 @@ function inject() {
 
     args[args.length - 1] = callback;
 
-    originalFunction.apply(thisArg, args);
+    supportPromise(originalFunction.apply(thisArg, args), callback);
   }
 
   fn.args = function args() {

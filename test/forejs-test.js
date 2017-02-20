@@ -4,7 +4,7 @@ var describe = require("mocha").describe;
 
 var fore = require("../src/forejs");
 
-// TODO: duplicate refs, inject.this
+// TODO: multiple usage
 
 function one(callback) {
   setTimeout(function () {
@@ -243,4 +243,149 @@ describe("General functionality", function () {
       })
     });
   });
+});
+
+describe("Promise support", function () {
+  function promiseOne() {
+    return new Promise(function (resolve, reject) {
+      one(function (err, res) {
+        resolve(res);
+      });
+    });
+  }
+
+  function promisePlusOne(n) {
+    return new Promise(function (resolve, reject) {
+      plusOne(n, function (err, res) {
+        resolve(res);
+      });
+    });
+  }
+
+  function promisePlus(n, m) {
+    return new Promise(function (resolve, reject) {
+      plus(n, m, function (err, res) {
+        resolve(res);
+      });
+    });
+  }
+
+  function promiseError() {
+    return new Promise(function (resolve, reject) {
+      error("msg", function (err, res) {
+        reject(err);
+      });
+    });
+  }
+
+  describe("simple chain", function () {
+    it("one", function (done) {
+      fore(
+          promiseOne,
+          function (res) {
+            expect(res).to.equal(1);
+            done();
+          }
+      )
+    });
+
+    it("one plusOne", function (done) {
+      fore(
+          promiseOne,
+          promisePlusOne,
+          function (res) {
+            expect(res).to.equal(2);
+            done();
+          }
+      )
+    });
+
+    it("one plusOne plus(1)", function (done) {
+      fore(
+          promiseOne,
+          promisePlusOne,
+          promisePlus.inject.args(1),
+          function (res) {
+            expect(res).to.equal(3);
+            done();
+          }
+      )
+    });
+  });
+
+  describe("Dependencies", function () {
+    it("one", function (done) {
+      fore({
+        one: promiseOne,
+        _: (function (res) {
+          expect(res).to.equal(1);
+          done();
+        }).inject.args(fore.get("one"))
+      })
+    });
+
+    it("one plusOne", function (done) {
+      fore({
+        one: promiseOne,
+        two: promisePlusOne.inject.args(fore.get("one")),
+        _: (function (res) {
+          expect(res).to.equal(2);
+          done();
+        }).inject.args(fore.get("two"))
+      })
+    });
+
+    it("one plusOne plus(1)", function (done) {
+      fore({
+        one: promiseOne,
+        two: promisePlusOne.inject.args(fore.get("one")),
+        three: promisePlus.inject.args(fore.get("two"), 1),
+        _: (function (res) {
+          expect(res).to.equal(3);
+          done();
+        }).inject.args(fore.get("three"))
+      })
+    });
+  });
+
+  describe("catch", function () {
+    it("simple", function (done) {
+      fore(
+          promiseError.inject.args("msg").catch(function (err) {
+            expect(err).to.equal("msg");
+            done();
+          }),
+          function () {
+            expect.fail();
+            done();
+          }
+      )
+    });
+
+    it("Dependencies", function (done) {
+      fore({
+        err: promiseError.inject.args("msg").catch(function (err) {
+          expect(err).to.equal("msg");
+          done();
+        }),
+        _: (function () {
+          expect.fail();
+          done();
+        }).inject.args(fore.get("err"))
+      })
+    });
+
+    it("general", function (done) {
+      fore.try(
+          promiseError.inject.args("msg"),
+          function () {
+            expect.fail();
+            done();
+          }
+      ).catch(function (err) {
+        expect(err).to.equal("msg");
+        done();
+      })
+    });
+  })
 });
