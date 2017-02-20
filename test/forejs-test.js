@@ -397,5 +397,33 @@ describe("Promise support", function () {
         done();
       })
     });
-  })
+  });
+});
+
+describe("anonymous functions and array dependencies", function () {
+  it("end position", function (done) {
+    fore({
+      one: one,
+      _: ["one", function (one) {
+        expect(one).to.equal(1);
+        done();
+      }]
+    })
+  });
+
+  it("middle position", function (done) {
+    fore({
+      one: one,
+      two: ["one", function (one, callback) {
+        callback(null, one + 1);
+      }],
+      _: ["one", "two", function (one, two, callback) {
+        expect(one).to.equal(1);
+        expect(two).to.equal(2);
+        expect(callback).to.be.a("function");
+        expect(arguments.length).to.equal(3);
+        done();
+      }]
+    })
+  });
 });

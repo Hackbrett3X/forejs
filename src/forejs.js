@@ -26,6 +26,13 @@ function dependentExecution(functions) {
   Object.getOwnPropertyNames(functions).forEach(function (name) {
     var fn = functions[name];
 
+    if (Array.isArray(fn)) {
+      // desugar ["a", "b", function (a, b) {...}]
+      fn = fn[fn.length - 1].inject.args.apply(null, fn.slice(0, fn.length - 1).map(function (arg) {
+        return fore.ref(arg);
+      }));
+    }
+
     var executorNode = getOrCreateNode(graph, name);
     executorNode.function = fn;
 
