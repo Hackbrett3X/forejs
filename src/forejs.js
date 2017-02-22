@@ -21,168 +21,141 @@ function fore(functions) {
  * @param {Object.<String, function>} functions
  */
 function dependentExecution(functions) {
-  var graph = {};
-  var roots = [];
-  Object.getOwnPropertyNames(functions).forEach(function (name) {
-    var fn = desugar(functions[name]);
+  var ids = Object.getOwnPropertyNames(functions);
 
-    var executorNode = getOrCreateNode(graph, name);
-    executorNode.function = fn;
+  var valuePipes = {};
+  ids.forEach(function (id) {
+    valuePipes[id] = new ValuePipe();
+  });
 
-    var numberOfInjections = 0;
+  var rootInjectors = [];
+  ids.forEach(function (id) {
+    var fn = desugar(functions[id]);
 
+    var hasInjections = [false];
+
+    // create nodes
+    var combinator = new Combinator();
     var injector = fn.$injector;
-    if (injector instanceof Injector) {
+    // TODO: loop executor
+    var executor = new AsyncExecutor(injector);
+    executor.executee = fn;
+    var valuePipe = valuePipes[id];
 
-      var injections = injector.injections;
-      if (injections !== null) {
-        injections.forEach(function (injection) {
-          if (injection instanceof Injection) {
-            if (connect(getOrCreateNode(graph, injection.id), executorNode)) {
-              numberOfInjections++;
-            }
-          }
-        });
-      }
-
-      var thisInjection = injector.thisInjection;
-      if (thisInjection && thisInjection instanceof Injection) {
-        if (connect(getOrCreateNode(graph, thisInjection.id), executorNode)) {
-          numberOfInjections++;
-        }
-      }
+    // link them
+    if (injector.injections !== null) {
+      injector.injections = injector.injections.map(function (injection) {
+        return createValueProviderFromInjection(valuePipes, combinator, injection, hasInjections);
+      });
     }
 
-    if (numberOfInjections === 0) {
-      roots.push(executorNode);
+    if (injector.thisInjection !== null) {
+      injector.thisInjection = createValueProviderFromInjection(valuePipes, combinator, injector.thisInjection, hasInjections);
     }
 
+    combinator.injector = injector;
+    injector.executor = executor;
+    executor.valuePipe = valuePipe;
+
+    if (!hasInjections[0]) {
+      rootInjectors.push(injector);
+    }
   });
 
-  var results = {};
-  roots.forEach(function (node) {
-    node.execute(results);
+  // start execution chain
+  rootInjectors.forEach(function (injector) {
+    injector.execute();
   });
+}
+
+/**
+ * @param {Object.<String, ValuePipe>} valuePipes
+ * @param {Combinator} combinator
+ * @param {Injection} injection
+ * @param {boolean[]} hasInjections
+ * @return {ValueProvider}
+ */
+function createValueProviderFromInjection(valuePipes, combinator, injection, hasInjections) {
+  var valueProvider = new ValueProvider();
+
+  if (injection instanceof Injection) {
+    hasInjections[0] = true;
+
+    var valuePipe = valuePipes[injection.id];
+
+    valuePipe.register(combinator);
+    combinator.valueHolderPairs.push([valuePipe, valueProvider]);
+  } else {
+    valueProvider.value = injection;
+  }
+
+  return valueProvider;
 }
 
 /**
  * @param {*} functions
  */
 function simpleChain(functions) {
-  functions = Array.prototype.map.call(functions, desugar);
+  var valuePipes = Array.prototype.map.call(functions, function () {
+    return new ValuePipe();
+  });
 
-  var currentIndex = 0;
+  var rootInjector;
 
-  function callback(err, res) {
-    if (err !== null && err !== void 0) {
-      handleError(functions[currentIndex].$injector, err);
-      return;
-    }
+  for (var i = 0; i < functions.length; i++) {
+    var fn = desugar(functions[i]);
 
-    currentIndex++;
-    if (currentIndex >= functions.length) {
-      return;
-    }
-
-    var fn = functions[currentIndex];
     var injector = fn.$injector;
-    if (!(injector instanceof Injector)) {
-      supportPromise(fn(res, callback), callback);
-      return;
-    }
+    // TODO: loop executor
+    var executor = new AsyncExecutor(injector);
+    executor.executee = fn;
+    var valuePipe = valuePipes[i];
 
-    if (injector.thisInjection === void 0) {
-      // inject.this has been called without args -> pass result as "this"
-      injector.thisInjection = res;
-    } else if (injector.injections === null) {
-      injector.injections = [res];
+    injector.injections = injector.injections && injector.injections.map(function (injection) {
+      var valueProvider = new ValueProvider();
+      valueProvider.value = injection;
+      return valueProvider;
+    });
+
+    if (i > 0) {
+      var combinator = new Combinator();
+      var inputValuePipe = valuePipes[i - 1];
+      inputValuePipe.register(combinator);
+
+      var injectionValueProvider;
+
+      var thisValueProvider = new ValueProvider();
+      if (injector.thisInjection === void 0) {
+        // inject last result as "this" argument
+        injector.thisInjection = thisValueProvider;
+        injectionValueProvider = thisValueProvider;
+      } else {
+        // inject last result as last argument
+        thisValueProvider.value = injector.thisInjection;
+
+        injectionValueProvider = new ValueProvider();
+
+        if (injector.injections === null) {
+          injector.injections = [injectionValueProvider];
+        } else {
+          injector.injections.push(injectionValueProvider);
+        }
+      }
+
+      combinator.valueHolderPairs.push([inputValuePipe, injectionValueProvider]);
+      injector.thisInjection = thisValueProvider;
+
+      combinator.injector = injector;
     } else {
-      injector.injections.push(res);
+      rootInjector = injector;
     }
 
-    supportPromise(fn(callback), callback);
+    injector.executor = executor;
+    executor.valuePipe = valuePipe;
   }
 
-  supportPromise(functions[0](callback), callback);
+  rootInjector.execute();
 }
-
-/**
- *
- * @param {ExecutorNode} fromNode
- * @param {ExecutorNode} toNode
- * @return {boolean} false iff this dependency already existed
- */
-function connect(fromNode, toNode) {
-  if (fromNode.dependents.indexOf(toNode) < 0) {
-    fromNode.dependents.push(toNode);
-    toNode.dependencies.push(fromNode);
-    return true;
-  } else {
-    return false;
-  }
-}
-
-/**
- * @param {Object.<String, ExecutorNode>} graph
- * @param {String} id
- * @returns {ExecutorNode}
- */
-function getOrCreateNode(graph, id) {
-  return graph[id] || (graph[id] = new ExecutorNode(id));
-}
-
-/**
- * @typedef {Object.<String, *>} Results
- */
-
-/**
- * @param {String} id
- * @constructor
- */
-function ExecutorNode(id) {
-  this.id = id;
-  this.dependencies = [];
-  this.executedDependencies = 0;
-  this.dependents = [];
-  this.function = null;
-}
-
-/**
- * @param {Results} results
- */
-ExecutorNode.prototype.execute = function execute(results) {
-  var fn = this.function;
-
-  var injector = fn.$injector;
-  if (injector instanceof Injector) {
-    injector.results = results;
-  }
-
-  var node = this;
-  function callback(err, res) {
-    if (err !== null && err !== void 0) {
-      handleError(injector, err);
-    } else {
-      results[node.id] = res;
-      node.dependents.forEach(function (node) {
-        node.notify(results);
-      });
-    }
-  }
-
-  supportPromise(fn(callback), callback);
-};
-
-/**
- * @param {Results} results
- */
-ExecutorNode.prototype.notify = function (results) {
-  this.executedDependencies++;
-
-  if (this.executedDependencies === this.dependencies.length) {
-    this.execute(results);
-  }
-};
 
 fore.try = function () {
   var args = arguments;
@@ -206,6 +179,12 @@ fore.try = function () {
   }
 };
 
+/**
+ * @param {function} fn
+ * @param {Injector} fn.$injector
+ * @param {function} errorHandler
+ * @return {InjectorFunction}
+ */
 function injectErrorHandler(fn, errorHandler) {
   var injector = fn.$injector;
   if (injector instanceof Injector) {
@@ -221,18 +200,26 @@ function injectErrorHandler(fn, errorHandler) {
  * @param {*} err
  */
 function handleError(injector, err) {
-  if (injector instanceof Injector && injector.catch !== null) {
-    injector.catch(err);
-  }
+  injector.catch(err);
 }
 
+/**
+ * @param {*[]|function} fn
+ * @param {Injector} fn.$injector
+ * @return {InjectorFunction}
+ */
 function desugar(fn) {
   if (Array.isArray(fn)) {
     // desugar ["a", "b", function (a, b) {...}]
-    fn = fn[fn.length - 1].inject.args.apply(null, fn.slice(0, fn.length - 1).map(function (arg) {
+    return fn[fn.length - 1].inject.args.apply(null, fn.slice(0, fn.length - 1).map(function (arg) {
       return typeof arg === "string" ? fore.ref(arg) : arg;
     }));
   }
+
+  if (!(fn.$injector instanceof Injector)) {
+    return fn.inject;
+  }
+
   return fn;
 }
 
@@ -260,35 +247,163 @@ fore.ref = function ref(id) {
 };
 
 /**
+ * @constructor
+ * @extends Array
+ */
+function ValuePipe() {
+  this.observers = [];
+}
+ValuePipe.prototype = Object.create(Array.prototype);
+
+/**
+ * @param {Combinator} observer
+ */
+ValuePipe.prototype.register = function (observer) {
+  if (this.observers.indexOf(observer) < 0) {
+    this.observers.push(observer);
+  }
+};
+
+/**
+ * @param {*} value
+ */
+ValuePipe.prototype.push = function (value) {
+  Array.prototype.push.call(this, value);
+  var sender = this;
+  this.observers.forEach(function (observer) {
+    observer.notify(sender);
+  });
+};
+
+
+/**
+ * @constructor
+ * @property {Injector} injector
+ * @property {Array} valueHolderPairs
+ */
+function Combinator() {
+  this.injector = null;
+  this.valueHolderPairs = [];
+  this.executionCounter = 0;
+}
+
+/**
+ * @param {ValuePipe} sender
+ */
+Combinator.prototype.notify = function (sender) {
+  // TODO: create combinations
+
+  var possibleCombinations = 1;
+
+  for (var i = 0; i < this.valueHolderPairs.length; i++) {
+    var pair = this.valueHolderPairs[i];
+    var input = pair[0];
+    if (input.length === 0) {
+      return;
+    }
+
+    possibleCombinations *= input.length;
+
+    pair[1].value = input[0];
+  }
+
+  if (this.executionCounter >= possibleCombinations) {
+    // prevent double execution
+    return;
+  }
+
+  this.executionCounter++;
+  this.injector.execute();
+};
+
+/**
+ * @constructor
+ * @property {*} value
+ */
+function ValueProvider() {
+  this.value = null;
+}
+
+/**
  * @param {String} id
  * @constructor
+ * @property {String} id
  */
 function Injection(id) {
   this.id = id;
 }
 
 /**
- * @param {Results} results
- * @return {*}
- */
-Injection.prototype.resolve = function resolve(results) {
-  return results[this.id];
-};
-
-/**
  * @constructor
+ * @property {(Injection|ValueProvider)[]} injections
+ * @property {Injection|ValueProvider} thisInjection
+ * @property {function(*)} catch
+ * @property {Executor} executor
  */
 function Injector() {
   this.injections = null;
   this.thisInjection = null;
-  this.results = null;
   this.catch = null;
+
+  this.executor = null;
 }
+
+Injector.prototype.execute = function () {
+  var args = this.injections === null ? [] : this.injections.map(function (valueProvider) {
+        return valueProvider.value;
+      });
+  var thisArg = this.thisInjection && this.thisInjection.value;
+
+  this.executor.execute(thisArg, args);
+};
+
+/**
+ * @constructor
+ * @abstract
+ * @property {function} executee
+ * @property {ValuePipe} valuePipe
+ */
+function Executor() {
+  this.executee = null;
+  this.valuePipe = null;
+}
+/**
+ * @param {Object|null} thisArg
+ * @param {*[]} args
+ */
+Executor.prototype.execute = function (thisArg, args) {
+};
+
+/**
+ * @param {Injector} injector
+ * @constructor
+ * @extends Executor
+ */
+function AsyncExecutor(injector) {
+  this.injector = injector;
+}
+AsyncExecutor.prototype = Object.create(Executor.prototype);
+
+AsyncExecutor.prototype.execute = function (thisArg, args) {
+  var valuePipe = this.valuePipe;
+  var injector = this.injector;
+
+  function callback(err, res) {
+    if (err !== null) {
+      handleError(injector, err);
+    } else {
+      valuePipe.push(res);
+    }
+  }
+
+  supportPromise(this.executee.apply(thisArg, args.concat(callback)), callback);
+};
 
 /**
  * @callback InjectorFunction
  * @property {function(...*): InjectorFunction} args
  * @property {function(Object): InjectorFunction} this
+ * @property {function(function(*)): InjectorFunction} catch
  */
 
 /**
@@ -297,28 +412,12 @@ function Injector() {
 function inject() {
   var originalFunction = this;
 
+  // clone the function
+  var fn = function () {
+    return originalFunction.apply(this, arguments);
+  };
+
   var injector = new Injector();
-
-  function fn(callback) {
-    var thisInjection = injector.thisInjection;
-    var thisArg = thisInjection && (thisInjection instanceof Injection ?
-            thisInjection.resolve(injector.results) : thisInjection);
-
-    var injections = injector.injections;
-    var args;
-    if (injections !== null) {
-      args = new Array(injections.length + 1);
-      injections.forEach(function (arg, i) {
-        args[i] = arg instanceof Injection ? arg.resolve(injector.results) : arg;
-      });
-    } else {
-      args = new Array(1);
-    }
-
-    args[args.length - 1] = callback;
-
-    supportPromise(originalFunction.apply(thisArg, args), callback);
-  }
 
   fn.args = function args() {
     var injections = injector.injections = new Array(arguments.length);
