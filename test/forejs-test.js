@@ -449,3 +449,83 @@ describe("syntactic sugar: injections as array", function () {
     })
   });
 });
+
+describe("Iterator", function () {
+  function* oneTwoThree() {
+    yield* [1, 2, 3];
+  }
+
+
+  describe("Simple chain", function () {
+    it("array", function (done) {
+      fore(
+          fore.each([1, 2, 3]),
+          (function () {
+            let counter = 1;
+            return function (res) {
+              expect(res).to.equal(counter++);
+              if (res === 3) {
+                done();
+              }
+            }
+          })()
+      )
+    });
+
+    it("oneTwoThree", function (done) {
+      fore(
+          fore.each(oneTwoThree),
+          (function () {
+            let counter = 1;
+            return function (res) {
+              expect(res).to.equal(counter++);
+              if (res === 3) {
+                done();
+              }
+            }
+          })()
+      )
+    });
+
+    it("proper propagation", function (done) {
+      fore(
+          fore.each(oneTwoThree),
+          (function () {
+            let counter = 1;
+            return function (res, callback) {
+              expect(res).to.equal(counter++);
+              callback(res + 1);
+            }
+          })(),
+          (function () {
+            let counter = 2;
+            return function (res) {
+              expect(res).to.equal(counter++);
+              if (res === 4) {
+                done();
+              }
+            }
+          })()
+      )
+    });
+
+    it("chained fore.each", function (done) {
+      fore(
+          fore.each(oneTwoThree),
+          fore.each(function* (n) {
+            yield* [n, n + 10, n + 20]
+          }),
+          (function () {
+            let i = 0;
+            let values = [1, 11, 21, 2, 12, 22, 3, 13, 23];
+            return function (res) {
+              expect(res).to.equal(values[i++]);
+              if (i === values.length) {
+                done();
+              }
+            }
+          })()
+      )
+    });
+  });
+});
