@@ -84,7 +84,8 @@ function createValueProviderFromInjection(valuePipes, combinator, injection, has
     var valuePipe = valuePipes[injection.id];
 
     valuePipe.register(combinator);
-    combinator.valueHolderPairs.push([valuePipe, valueProvider]);
+    combinator.valuePipes.push(valuePipe);
+    combinator.valueProviders.push(valueProvider);
   } else {
     valueProvider.value = injection;
   }
@@ -142,7 +143,8 @@ function simpleChain(functions) {
         }
       }
 
-      combinator.valueHolderPairs.push([inputValuePipe, injectionValueProvider]);
+      combinator.valuePipes.push(inputValuePipe);
+      combinator.valueProviders.push(injectionValueProvider);
       injector.thisInjection = thisValueProvider;
 
       combinator.injector = injector;
@@ -279,11 +281,13 @@ ValuePipe.prototype.push = function (value) {
 /**
  * @constructor
  * @property {Injector} injector
- * @property {Array} valueHolderPairs
+ * @property {ValuePipe[]} valuePipes
+ * @property {ValueProvider[]} valueProviders
  */
 function Combinator() {
   this.injector = null;
-  this.valueHolderPairs = [];
+  this.valuePipes = [];
+  this.valueProviders = [];
   this.executionCounter = 0;
 }
 
@@ -295,16 +299,15 @@ Combinator.prototype.notify = function (sender) {
 
   var possibleCombinations = 1;
 
-  for (var i = 0; i < this.valueHolderPairs.length; i++) {
-    var pair = this.valueHolderPairs[i];
-    var input = pair[0];
+  for (var i = 0; i < this.valuePipes.length; i++) {
+    var input = this.valuePipes[i];
     if (input.length === 0) {
       return;
     }
 
     possibleCombinations *= input.length;
 
-    pair[1].value = input[0];
+    this.valueProviders[i].value = input[0];
   }
 
   if (this.executionCounter >= possibleCombinations) {
