@@ -1,8 +1,8 @@
-var expect = require("chai").expect;
-var it = require("mocha").it;
-var describe = require("mocha").describe;
+const expect = require("chai").expect;
+const it = require("mocha").it;
+const describe = require("mocha").describe;
 
-var fore = require("../src/forejs");
+const fore = require("../src/forejs");
 
 function one(callback) {
   setTimeout(function () {
@@ -23,7 +23,7 @@ function plus(n, m, callback) {
 }
 
 function toUpperCase(callback) {
-  var str = this;
+  const str = this;
   setTimeout(function () {
     callback(null, str.toUpperCase());
   }, 0);
@@ -494,7 +494,7 @@ describe("Iterator", function () {
             let counter = 1;
             return function (res, callback) {
               expect(res).to.equal(counter++);
-              callback(res + 1);
+              callback(null, res + 1);
             }
           })(),
           (function () {
@@ -526,6 +526,65 @@ describe("Iterator", function () {
             }
           })()
       )
+    });
+  });
+
+  describe("Complex", function () {
+    it("2-dimensional", function (done) {
+      let counter = 0;
+      let expectedValues = [11, 12, 13, 21, 22, 23, 31, 32, 33];
+      fore({
+        ones: fore.each(oneTwoThree),
+        tens: fore.each([10, 20, 30]),
+        _: ["ones", "tens", function (ones, tens) {
+          let index = expectedValues.indexOf(ones + tens);
+          if (index < 0) {
+            expect.fail();
+            done();
+          } else {
+            counter++;
+            expectedValues[index] = true;
+          }
+
+          if (counter === expectedValues.length) {
+            expect(expectedValues.every((t) => t)).to.equal(true);
+            done();
+          }
+        }]
+      })
+    });
+
+    it("3-dimensional", function (done) {
+      let counter = 0;
+      let expectedValues = [
+        111, 112, 113, 121, 122, 123, 131, 132, 133,
+        211, 212, 213, 221, 222, 223, 231, 232, 233,
+        311, 312, 313, 321, 322, 323, 331, 332, 333
+      ];
+      fore({
+        ones: fore.each(oneTwoThree),
+        tens: fore.each([10, 20, 30]),
+        hundreds: fore.each({
+          [Symbol.iterator]: function* () {
+            yield* [100, 200, 300];
+          }
+        }),
+        _: ["ones", "tens", "hundreds", function (ones, tens, hundreds) {
+          let index = expectedValues.indexOf(ones + tens + hundreds);
+          if (index < 0) {
+            expect.fail();
+            done();
+          } else {
+            counter++;
+            expectedValues[index] = true;
+          }
+
+          if (counter === expectedValues.length) {
+            expect(expectedValues.every((t) => t)).to.equal(true);
+            done();
+          }
+        }]
+      })
     });
   });
 });

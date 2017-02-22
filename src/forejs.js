@@ -1,5 +1,8 @@
 module.exports = fore;
 
+var symbolsSupported = typeof Symbol === "function" && typeof Symbol.iterator === "symbol";
+var arrayValuesSupported = typeof Array.prototype.values === "function";
+
 /**
  * @callback Callback
  * @param {*} err
@@ -10,7 +13,7 @@ module.exports = fore;
  * @param {...*} functions
  */
 function fore(functions) {
-  if (typeof functions === "object") {
+  if (typeof functions === "object" && Object.getPrototypeOf(functions) === Object.prototype) {
     dependentExecution(functions);
   } else {
     simpleChain(arguments);
@@ -37,9 +40,7 @@ function dependentExecution(functions) {
     // create nodes
     var combinator = new Combinator();
     var injector = fn.$injector;
-    // TODO: loop executor
-    var executor = new AsyncExecutor(injector);
-    executor.executee = fn;
+    var executor = createExecutor(fn, injector);
     var valuePipe = valuePipes[id];
 
     // link them
@@ -107,9 +108,7 @@ function simpleChain(functions) {
     var fn = desugar(functions[i]);
 
     var injector = fn.$injector;
-    // TODO: loop executor
-    var executor = new AsyncExecutor(injector);
-    executor.executee = fn;
+    var executor = createExecutor(fn, injector);
     var valuePipe = valuePipes[i];
 
     injector.injections = injector.injections && injector.injections.map(function (injection) {
@@ -182,6 +181,24 @@ fore.try = function () {
 };
 
 /**
+ * @param {Array|Iterator|Iterable|function} iterable
+ * @constructor
+ * @property {Array|Iterator|function} iterable
+ * @property {Injector} $injector
+ */
+function ForeEach(iterable) {
+  this.iterable = iterable;
+}
+
+/**
+ * @param {Array|Iterator|Iterable|function} iterable
+ * @return {ForeEach}
+ */
+fore.each = function foreEach(iterable) {
+  return new ForeEach(iterable);
+};
+
+/**
  * @param {function} fn
  * @param {Injector} fn.$injector
  * @param {function} errorHandler
@@ -206,11 +223,20 @@ function handleError(injector, err) {
 }
 
 /**
- * @param {*[]|function} fn
+ * @param {*[]|function|ForeEach} fn
  * @param {Injector} fn.$injector
  * @return {InjectorFunction}
  */
 function desugar(fn) {
+  if (fn instanceof ForeEach) {
+    if (fn.iterable.$injector instanceof Injector) {
+      fn.$injector = fn.iterable.$injector;
+    } else {
+      fn.$injector = new Injector();
+    }
+    return fn;
+  }
+
   if (Array.isArray(fn)) {
     // desugar ["a", "b", function (a, b) {...}]
     return fn[fn.length - 1].inject.args.apply(null, fn.slice(0, fn.length - 1).map(function (arg) {
@@ -295,28 +321,57 @@ function Combinator() {
  * @param {ValuePipe} sender
  */
 Combinator.prototype.notify = function (sender) {
-  // TODO: create combinations
+  var valuePipes = this.valuePipes;
+  var valueProviders = this.valueProviders;
 
-  var possibleCombinations = 1;
+  var currentLengths = valuePipes.map(function (valuePipe) {
+    return valuePipe.length;
+  });
 
-  for (var i = 0; i < this.valuePipes.length; i++) {
-    var input = this.valuePipes[i];
-    if (input.length === 0) {
-      return;
-    }
-
-    possibleCombinations *= input.length;
-
-    this.valueProviders[i].value = input[0];
-  }
+  var possibleCombinations = currentLengths.reduce(function (length, l) {
+    return length * l;
+  });
 
   if (this.executionCounter >= possibleCombinations) {
     // prevent double execution
     return;
   }
 
-  this.executionCounter++;
-  this.injector.execute();
+  var senderIndex = valuePipes.findIndex(function (valuePipe) {
+    return valuePipe === sender;
+  });
+
+  valueProviders[senderIndex].value = valuePipes[senderIndex][currentLengths[senderIndex] - 1];
+
+  // TODO: is ES6
+  var currentIndices = new Array(valuePipes.length).fill(0);
+
+  var carry = false;
+  while (!carry) {
+    carry = true;
+
+    // set current values and count one step
+    for (var i = 0; i < valuePipes.length; i++) {
+      if (i === senderIndex) {
+        continue;
+      }
+
+      valueProviders[i].value = valuePipes[i][currentIndices[i]];
+
+      if (carry) {
+        currentIndices[i]++;
+        carry = false;
+        if (currentIndices[i] === currentLengths[i]) {
+          currentIndices[0] = 0;
+          carry = true;
+        }
+      }
+    }
+
+    // emit value combination
+    this.executionCounter++;
+    this.injector.execute();
+  }
 };
 
 /**
@@ -367,7 +422,6 @@ Injector.prototype.execute = function () {
  * @property {ValuePipe} valuePipe
  */
 function Executor() {
-  this.executee = null;
   this.valuePipe = null;
 }
 /**
@@ -378,12 +432,15 @@ Executor.prototype.execute = function (thisArg, args) {
 };
 
 /**
+ * @param {function} fn
  * @param {Injector} injector
  * @constructor
  * @extends Executor
  */
-function AsyncExecutor(injector) {
+function AsyncExecutor(fn, injector) {
+  Executor.call(this);
   this.injector = injector;
+  this.fn = fn;
 }
 AsyncExecutor.prototype = Object.create(Executor.prototype);
 
@@ -399,8 +456,82 @@ AsyncExecutor.prototype.execute = function (thisArg, args) {
     }
   }
 
-  supportPromise(this.executee.apply(thisArg, args.concat(callback)), callback);
+  supportPromise(this.fn.apply(thisArg, args.concat(callback)), callback);
 };
+
+/**
+ * @param {Iterator} iterator
+ * @constructor
+ * @extends Executor
+ */
+function IteratorExecutor(iterator) {
+  Executor.call(this);
+  this.iterator = iterator;
+}
+IteratorExecutor.prototype = Object.create(Executor.prototype);
+
+IteratorExecutor.prototype.execute = function (thisArg, args) {
+  var iterator = this.iterator;
+  for (var next = iterator.next(); !next.done; next = iterator.next()) {
+    this.valuePipe.push(next.value);
+  }
+};
+
+/**
+ * @param {function} generator
+ * @constructor
+ * @extends Executor
+ */
+function GeneratorExecutor(generator) {
+  Executor.call(this);
+  this.generator = generator;
+}
+GeneratorExecutor.prototype = Object.create(Executor.prototype);
+
+GeneratorExecutor.prototype.execute = function (thisArg, args) {
+  var iterator = this.generator.apply(thisArg, args);
+  var iteratorExecutor = new IteratorExecutor(iterator);
+  iteratorExecutor.valuePipe = this.valuePipe;
+  iteratorExecutor.execute(thisArg, args);
+};
+
+/**
+ * @param {ForeEach|function} fn
+ * @param {Injector} injector
+ * @return {Executor}
+ */
+function createExecutor(fn, injector) {
+  if (!(fn instanceof ForeEach)) {
+    return new AsyncExecutor(fn, injector);
+  }
+
+  var iterable = fn.iterable;
+  if (Array.isArray(iterable)) {
+    var iterator;
+    if (arrayValuesSupported) {
+      iterator = iterable.values();
+    } else {
+      iterator = {
+        next: (function () {
+          var array = iterable;
+          var i = 0;
+          return function () {
+            return i < array.length ? {value: array[i++]} : {done: true};
+          }
+        })()
+      }
+    }
+    return new IteratorExecutor(iterator)
+  }
+
+  if (typeof iterable === "function") {
+    return new GeneratorExecutor(iterable);
+  }
+
+  if (symbolsSupported && typeof iterable === "object" && typeof iterable[Symbol.iterator] === "function") {
+    return new IteratorExecutor(iterable[Symbol.iterator]());
+  }
+}
 
 /**
  * @callback InjectorFunction
