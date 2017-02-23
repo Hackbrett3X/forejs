@@ -337,6 +337,8 @@ Combinator.prototype.notify = function (sender) {
     return;
   }
 
+  this.executionCounter = possibleCombinations;
+
   var senderIndex = valuePipes.findIndex(function (valuePipe) {
     return valuePipe === sender;
   });
@@ -362,14 +364,13 @@ Combinator.prototype.notify = function (sender) {
         currentIndices[i]++;
         carry = false;
         if (currentIndices[i] === currentLengths[i]) {
-          currentIndices[0] = 0;
+          currentIndices[i] = 0;
           carry = true;
         }
       }
     }
 
     // emit value combination
-    this.executionCounter++;
     this.injector.execute();
   }
 };

@@ -561,6 +561,11 @@ describe("Iterator", function () {
         211, 212, 213, 221, 222, 223, 231, 232, 233,
         311, 312, 313, 321, 322, 323, 331, 332, 333
       ];
+      function delay(n, callback) {
+        setTimeout(function () {
+          callback(null, n);
+        }, Math.random() * 10);
+      }
       fore({
         ones: fore.each(oneTwoThree),
         tens: fore.each([10, 20, 30]),
@@ -569,7 +574,10 @@ describe("Iterator", function () {
             yield* [100, 200, 300];
           }
         }),
-        _: ["ones", "tens", "hundreds", function (ones, tens, hundreds) {
+        onesDelayed: ["ones", delay],
+        tensDelayed: ["tens", delay],
+        hundredsDelayed: ["hundreds", delay],
+        _: ["onesDelayed", "tensDelayed", "hundredsDelayed", function (ones, tens, hundreds) {
           let index = expectedValues.indexOf(ones + tens + hundreds);
           if (index < 0) {
             expect.fail();
