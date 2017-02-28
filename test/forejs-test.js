@@ -4,35 +4,32 @@ const describe = require("mocha").describe;
 
 const fore = require("../src/forejs");
 
-function one(callback) {
+function delay(res, callback) {
   setTimeout(function () {
-    callback(null, 1);
-  }, 0);
+    callback(null, res);
+  }, Math.random() * 10);
+}
+
+function one(callback) {
+  delay(1, callback);
 }
 
 function plusOne(n, callback) {
-  setTimeout(function () {
-    callback(null, n + 1);
-  }, 0);
+  delay(n + 1, callback);
 }
 
 function plus(n, m, callback) {
-  setTimeout(function () {
-    callback(null, n + m);
-  }, 0);
+  delay(n + m, callback);
 }
 
 function toUpperCase(callback) {
-  const str = this;
-  setTimeout(function () {
-    callback(null, str.toUpperCase());
-  }, 0);
+  delay(this.toUpperCase(), callback);
 }
 
 function error(error, callback) {
   setTimeout(function () {
     callback(error)
-  }, 0)
+  }, Math.random() * 10)
 }
 
 describe("General functionality", function () {
@@ -450,7 +447,7 @@ describe("syntactic sugar: injections as array", function () {
   });
 });
 
-describe("Iterator", function () {
+describe("each", function () {
   function* oneTwoThree() {
     yield* [1, 2, 3];
   }
@@ -561,11 +558,6 @@ describe("Iterator", function () {
         211, 212, 213, 221, 222, 223, 231, 232, 233,
         311, 312, 313, 321, 322, 323, 331, 332, 333
       ];
-      function delay(n, callback) {
-        setTimeout(function () {
-          callback(null, n);
-        }, Math.random() * 10);
-      }
       fore({
         ones: fore.each(oneTwoThree),
         tens: fore.each([10, 20, 30]),
@@ -595,4 +587,64 @@ describe("Iterator", function () {
       })
     });
   });
+});
+
+describe("collect", function () {
+  describe("waterfall", function () {
+    it("1-dimensional", function (done) {
+      fore(
+          fore.each([1, 2, 3]),
+          delay,
+          fore.collect(function (values) {
+            expect(values).to.have.members([1, 2, 3]);
+            done();
+          })
+      )
+    });
+
+    it("proper propagation", function (done) {
+      fore(
+          fore.each([1, 2, 3]),
+          fore.collect(function (res, callback) {
+            callback(null, res);
+          }),
+          delay,
+          function (values) {
+            expect(values).to.have.members([1, 2, 3]);
+            done();
+          }
+      )
+    });
+  });
+
+  describe("dependencies", function () {
+    it("1-dimensional", function (done) {
+      fore({
+        "ones": fore.each([1, 2, 3]),
+        "onesDelayed": ["ones", delay],
+        "_": fore.collect(["onesDelayed", function (ones) {
+          expect(ones).to.have.members([1, 2, 3]);
+          done();
+        }])
+      })
+    });
+
+    it("3-dimensional", function (done) {
+      fore({
+        ones: fore.each([1, 2, 3]),
+        tens: fore.each([10, 20, 30]),
+        hundreds: fore.each([100, 200, 300]),
+        onesDelayed: ["ones", delay],
+        tensDelayed: ["tens", delay],
+        hundredsDelayed: ["hundreds", delay],
+        _: fore.collect(["onesDelayed", "tensDelayed", "hundredsDelayed", function (ones, tens, hundreds) {
+          expect(ones).to.have.members([1, 2, 3]);
+          expect(tens).to.have.members([10, 20, 30]);
+          expect(hundreds).to.have.members([100, 200, 300]);
+
+          done();
+        }])
+      })
+    });
+  })
 });
