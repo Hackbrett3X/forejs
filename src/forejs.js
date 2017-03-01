@@ -496,10 +496,11 @@ Injector.prototype.execute = function (done, expectedLength) {
 /**
  * @constructor
  * @abstract
- * @property {function} executee
  * @property {ValuePipe} valuePipe
+ * @property {Injector} injector
  */
-function Executor() {
+function Executor(injector) {
+  this.injector = injector;
   this.valuePipe = null;
 }
 /**
@@ -518,8 +519,7 @@ Executor.prototype.execute = function (thisArg, args, done, expectedLength) {
  * @extends Executor
  */
 function AsyncExecutor(injector) {
-  Executor.call(this);
-  this.injector = injector;
+  Executor.call(this, injector);
   this.fn = injector.fn;
 }
 AsyncExecutor.prototype = Object.create(Executor.prototype);
@@ -559,8 +559,7 @@ AsyncExecutor.prototype.execute = function (thisArg, args, done, expectedLength)
  * @extends Executor
  */
 function PromiseExecutor(injector) {
-  Executor.call(this);
-  this.injector = injector;
+  Executor.call(this, injector);
   this.promise = injector.fn;
 }
 PromiseExecutor.prototype = Object.create(Executor.prototype);
@@ -586,41 +585,58 @@ function executePromise(promise, valuePipe, injector) {
 
 /**
  * @param {Iterator} iterator
+ * @param {Injector} injector
  * @constructor
  * @extends Executor
  */
-function IteratorExecutor(iterator) {
-  Executor.call(this);
+function IteratorExecutor(iterator, injector) {
+  Executor.call(this, injector);
   this.iterator = iterator;
 }
 IteratorExecutor.prototype = Object.create(Executor.prototype);
 
 IteratorExecutor.prototype.execute = function (thisArg, args, done) {
   var iterator = this.iterator;
+  var valuePipe = this.valuePipe;
+  var injector = this.injector;
+
   for (var next = iterator.next(), length = 1; !next.done; length++) {
     var value = next.value;
 
     // retrieve next already here because we must know if the iterator is done
     next = iterator.next();
 
-    this.valuePipe.push(value, next.done, length);
+    if (value instanceof Promise) {
+      value
+          .then(function (done, expectedLength, value) {
+            valuePipe.push(value, done, expectedLength)
+          }.bind(null, next.done, length))
+          .catch(function (err) {
+            // TODO: there might be a problem when the last promise is rejected: collectors will never get called since
+            // done was never true
+            handleError(injector, err);
+          });
+    } else {
+      valuePipe.push(value, next.done, length);
+    }
   }
 };
 
 /**
  * @param {function} generator
+ * @param {Injector} injector
  * @constructor
  * @extends Executor
  */
-function GeneratorExecutor(generator) {
-  Executor.call(this);
+function GeneratorExecutor(generator, injector) {
+  Executor.call(this, injector);
   this.generator = generator;
 }
 GeneratorExecutor.prototype = Object.create(Executor.prototype);
 
 GeneratorExecutor.prototype.execute = function (thisArg, args, done, expectedLength) {
   var iterator = this.generator.apply(thisArg, args);
-  var iteratorExecutor = new IteratorExecutor(iterator);
+  var iteratorExecutor = new IteratorExecutor(iterator, this.injector);
   iteratorExecutor.valuePipe = this.valuePipe;
   iteratorExecutor.execute(thisArg, args, done, expectedLength);
 };
@@ -654,15 +670,15 @@ function createExecutor(injector) {
         })()
       }
     }
-    return new IteratorExecutor(iterator)
+    return new IteratorExecutor(iterator, injector)
   }
 
   if (typeof iterable === "function") {
-    return new GeneratorExecutor(iterable);
+    return new GeneratorExecutor(iterable, injector);
   }
 
   if (symbolsSupported && typeof iterable === "object" && typeof iterable[Symbol.iterator] === "function") {
-    return new IteratorExecutor(iterable[Symbol.iterator]());
+    return new IteratorExecutor(iterable[Symbol.iterator](), injector);
   }
 }
 

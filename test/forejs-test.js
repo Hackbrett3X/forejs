@@ -219,11 +219,6 @@ describe("General functionality", function () {
           expect(plus).to.equal(3);
           done();
         }).inject.args(fore.ref("plus"))
-
-        // maybe some sugar:
-        // _: ["plus", function () {
-        //   expect(fore.get("plus").to.equal(3);
-        // }]
       })
     });
 
@@ -484,7 +479,7 @@ describe("Promise support", function () {
       )
     });
 
-    it("waterfall", function (done) {
+    it("Complex", function (done) {
       fore({
         one: promiseOne(),
         _: ["one", function (one) {
@@ -684,6 +679,80 @@ describe("each", function () {
             done();
           }
         }]
+      })
+    });
+  });
+
+  describe("Promise iterators", function () {
+    function* oneTwoThreePromise() {
+      yield Promise.resolve(1);
+      yield Promise.resolve(2);
+      yield Promise.resolve(3);
+    }
+
+    it("Waterfall", function (done) {
+      fore(
+          fore.each(oneTwoThreePromise),
+          (function () {
+            let counter = 0;
+            return function (n) {
+              expect(n).to.be.oneOf([1, 2, 3]);
+              counter++;
+              if (counter === 3) {
+                done();
+              }
+              if (counter > 3) {
+                expect.fail();
+              }
+            }
+          })()
+      )
+    });
+
+    it("Complex", function (done) {
+      fore({
+        numbers: fore.each(oneTwoThreePromise),
+        _: ["numbers", (function () {
+          let counter = 0;
+          return function (n) {
+            expect(n).to.be.oneOf([1, 2, 3]);
+            counter++;
+            if (counter === 3) {
+              done();
+            }
+            if (counter > 3) {
+              expect.fail();
+            }
+          }
+        })()]
+      })
+    });
+
+    it("catch", function (done) {
+      fore(
+          fore.each((function* () {
+            yield Promise.reject("msg");
+          }).inject.catch(function (err) {
+            expect(err).to.equal("msg");
+            done();
+          })),
+          function () {
+            expect.fail();
+          }
+      )
+    });
+    
+    it("general catch", function (done) {
+      fore.try(
+          fore.each(function* () {
+            yield Promise.reject("msg");
+          }),
+          function () {
+            expect.fail();
+          }
+      ).catch(function (err) {
+        expect(err).to.equal("msg");
+        done();
       })
     });
   });
