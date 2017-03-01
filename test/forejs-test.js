@@ -472,6 +472,29 @@ describe("Promise support", function () {
       })
     });
   });
+
+  describe("direct promises", function () {
+    it("waterfall", function (done) {
+      fore(
+          promiseOne(),
+          function (one) {
+            expect(one).to.equal(1);
+            done();
+          }
+      )
+    });
+
+    it("waterfall", function (done) {
+      fore({
+        one: promiseOne(),
+        _: ["one", function (one) {
+          expect(one).to.equal(1);
+          done();
+        }]
+      });
+    });
+
+  })
 });
 
 describe("syntactic sugar: injections as array", function () {

@@ -233,7 +233,7 @@ function desugar(fn) {
   }
 
   if (!(fn instanceof Injector)) {
-    return fn.inject;
+    return new Injector(fn);
   }
 
   return fn;
@@ -430,7 +430,7 @@ var ExecutionMode = {
 };
 
 /**
- * @param {function|Array} fn
+ * @param {function|Array|Promise} fn
  * @constructor
  * @property {function|Array} fn
  * @property {(Injection|ValueProvider)[]} injections
@@ -513,15 +513,14 @@ Executor.prototype.execute = function (thisArg, args, done, expectedLength) {
 };
 
 /**
- * @param {function} fn
  * @param {Injector} injector
  * @constructor
  * @extends Executor
  */
-function AsyncExecutor(fn, injector) {
+function AsyncExecutor(injector) {
   Executor.call(this);
   this.injector = injector;
-  this.fn = fn;
+  this.fn = injector.fn;
 }
 AsyncExecutor.prototype = Object.create(Executor.prototype);
 
@@ -547,17 +546,43 @@ AsyncExecutor.prototype.execute = function (thisArg, args, done, expectedLength)
   }
 
   if (returnValue instanceof Promise) {
-    returnValue
-        .then(function (res) {
-          emit(res);
-        })
-        .catch(function (err) {
-          handleError(injector, err);
-        });
+    executePromise(returnValue, valuePipe, injector);
   } else {
     emit(returnValue);
   }
 };
+
+/**
+ * @param {Injector} injector
+ * @param {Promise} injector.fn
+ * @constructor
+ * @extends Executor
+ */
+function PromiseExecutor(injector) {
+  Executor.call(this);
+  this.injector = injector;
+  this.promise = injector.fn;
+}
+PromiseExecutor.prototype = Object.create(Executor.prototype);
+
+PromiseExecutor.prototype.execute = function (thisArg, args, done, expectedLength) {
+  executePromise(this.promise, this.valuePipe, this.injector);
+};
+
+/**
+ * @param {Promise} promise
+ * @param {ValuePipe} valuePipe
+ * @param {Injector} injector
+ */
+function executePromise(promise, valuePipe, injector) {
+  promise
+      .then(function (res) {
+        valuePipe.push(res, true, 1);
+      })
+      .catch(function (err) {
+        handleError(injector, err);
+      });
+}
 
 /**
  * @param {Iterator} iterator
@@ -606,7 +631,11 @@ GeneratorExecutor.prototype.execute = function (thisArg, args, done, expectedLen
  */
 function createExecutor(injector) {
   if (injector.mode !== ExecutionMode.EACH) {
-    return new AsyncExecutor(injector.fn, injector);
+    if (injector.fn instanceof Promise) {
+      return new PromiseExecutor(injector);
+    } else {
+      return new AsyncExecutor(injector);
+    }
   }
 
   var iterable = injector.fn;
