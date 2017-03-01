@@ -250,6 +250,44 @@ describe("General functionality", function () {
       })
     })
   });
+
+  describe("Support for synchronous functions", function () {
+    function oneSync() {
+      return 1;
+    }
+    function plusOneSync(n) {
+      return n + 1;
+    }
+    function plusSync(n, m) {
+      return n + m;
+    }
+
+    it("waterfall", function (done) {
+      fore(
+          oneSync,
+          plusOneSync,
+          plusOne,
+          plusSync.inject.args(1),
+          function (n) {
+            expect(n).to.equal(4);
+            done();
+          }
+      );
+    });
+
+    it("Dependencies", function (done) {
+      fore({
+        one: oneSync,
+        two: ["one", plusOneSync],
+        three: ["two", plusOne],
+        four: [1, "three", plusSync],
+        _: ["four", function (n) {
+          expect(n).to.equal(4);
+          done();
+        }]
+      });
+    });
+  })
 });
 
 describe("Promise support", function () {

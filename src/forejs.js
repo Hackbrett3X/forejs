@@ -240,22 +240,6 @@ function desugar(fn) {
 }
 
 /**
- * @param {Promise|undefined} promise
- * @param {Callback} callback
- */
-function supportPromise(promise, callback) {
-  if (promise instanceof Promise) {
-    promise
-        .then(function (res) {
-          callback(null, res);
-        })
-        .catch(function (err) {
-          callback(err);
-        });
-  }
-}
-
-/**
  * @param {String} id
  */
 fore.ref = function ref(id) {
@@ -549,11 +533,30 @@ AsyncExecutor.prototype.execute = function (thisArg, args, done, expectedLength)
     if (err !== null) {
       handleError(injector, err);
     } else {
-      valuePipe.push(res, done, expectedLength);
+      emit(res);
     }
   }
 
-  supportPromise(this.fn.apply(thisArg, args.concat(callback)), callback);
+  function emit(res) {
+    valuePipe.push(res, done, expectedLength);
+  }
+
+  var returnValue = this.fn.apply(thisArg, args.concat(callback));
+  if (returnValue === void 0) {
+    return;
+  }
+
+  if (returnValue instanceof Promise) {
+    returnValue
+        .then(function (res) {
+          emit(res);
+        })
+        .catch(function (err) {
+          handleError(injector, err);
+        });
+  } else {
+    emit(returnValue);
+  }
 };
 
 /**
