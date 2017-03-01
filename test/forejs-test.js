@@ -287,6 +287,45 @@ describe("General functionality", function () {
         }]
       });
     });
+  });
+
+  describe("nesting", function () {
+    it("waterfall", function (done) {
+      fore(
+          one,
+          function (one, callback) {
+            fore(
+                plusOne.inject.args(one),
+                plusOne,
+                callback.inject.args(null)
+            )
+          },
+          plusOne,
+          function (n) {
+            expect(n).to.equal(4);
+            done();
+          }
+      )
+    });
+
+    it("dependencies", function (done) {
+      fore({
+        one: one,
+        three: ["one", function (one, callback) {
+          fore({
+            two: plusOne.inject.args(one),
+            three: ["two", plusOne],
+            _: [null, "three", callback]
+          })
+        }],
+        four: ["three", plusOne],
+        _: ["four", function (n) {
+          expect(n).to.equal(4);
+          done();
+        }]
+      })
+    });
+
   })
 });
 
