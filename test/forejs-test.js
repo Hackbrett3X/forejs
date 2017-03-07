@@ -755,6 +755,29 @@ describe("each", function () {
         done();
       })
     });
+
+    it("last promise rejected", function (done) {
+      let counter = 0;
+      function ok() {
+        if (counter++ === 1) {
+          done();
+        }
+      }
+      fore.try(
+          fore.each(function* () {
+            yield Promise.resolve(1);
+            yield Promise.resolve(2);
+            yield Promise.reject("msg");
+          }),
+          fore.collect(function (res) {
+            expect(res).to.have.members([1, 2]);
+            ok();
+          })
+      ).catch(function (err) {
+        expect(err).to.equal("msg");
+        ok();
+      })
+    })
   });
 });
 

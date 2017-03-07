@@ -252,8 +252,12 @@ fore.ref = function ref(id) {
  */
 function ValuePipe() {
   this.observers = [];
+
   this.done = false;
+  this.reachedLast = false;
+
   this.expectedLength = 0;
+  this.failedLength = 0;
 }
 ValuePipe.prototype = Object.create(Array.prototype);
 
@@ -274,10 +278,23 @@ ValuePipe.prototype.register = function (observer) {
 ValuePipe.prototype.push = function (value, done, expectedLength) {
   Array.prototype.push.call(this, value);
 
+  this.notifyObservers(done, expectedLength);
+};
+
+ValuePipe.prototype.pushFailure = function (done, expectedLength) {
+  this.failedLength++;
+
+  this.notifyObservers(done, expectedLength);
+};
+
+ValuePipe.prototype.notifyObservers = function (done, expectedLength) {
   if (done) {
-    this.expectedLength = expectedLength;
+    this.reachedLast = true;
   }
-  this.done = this.length === this.expectedLength;
+
+  this.expectedLength = Math.max(this.expectedLength, expectedLength);
+
+  this.done = this.reachedLast && this.length === this.expectedLength - this.failedLength;
 
   var sender = this;
   this.observers.forEach(function (observer) {
@@ -611,11 +628,10 @@ IteratorExecutor.prototype.execute = function (thisArg, args, done) {
           .then(function (done, expectedLength, value) {
             valuePipe.push(value, done, expectedLength)
           }.bind(null, next.done, length))
-          .catch(function (err) {
-            // TODO: there might be a problem when the last promise is rejected: collectors will never get called since
-            // done was never true
+          .catch(function (done, expectedLength, err) {
             handleError(injector, err);
-          });
+            valuePipe.pushFailure(done, expectedLength);
+          }.bind(null, next.done, length));
     } else {
       valuePipe.push(value, next.done, length);
     }
