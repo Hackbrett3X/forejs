@@ -840,3 +840,59 @@ describe("collect", function () {
     });
   })
 });
+
+describe("reduce", function () {
+  describe("waterfall", function () {
+    it("1-dimensional", function (done) {
+      fore(
+          fore.each([1, 2, 3]),
+          delay,
+          fore.reduce(function (array, value, callback) {
+            callback(null, array.concat(value));
+          }, []),
+          function (values) {
+            expect(values).to.have.members([1, 2, 3]);
+            done();
+          }
+      )
+    });
+  });
+
+  describe("dependencies", function () {
+    it("1-dimensional", function (done) {
+      fore({
+        "ones": fore.each([1, 2, 3]),
+        "onesDelayed": ["ones", delay],
+        "array": fore.reduce(["onesDelayed", function (array, n, callback) {
+          callback(null, array.concat(n));
+        }], []),
+        "_": ["array", function (array) {
+          expect(array).to.have.members([1, 2, 3]);
+          done();
+        }]
+      })
+    });
+
+    it("3-dimensional", function (done) {
+      fore({
+        ones: fore.each([1, 2, 3]),
+        tens: fore.each([10, 20, 30]),
+        hundreds: fore.each([100, 200, 300]),
+        onesDelayed: ["ones", delay],
+        tensDelayed: ["tens", delay],
+        hundredsDelayed: ["hundreds", delay],
+        array: fore.reduce(["onesDelayed", "tensDelayed", "hundredsDelayed", function (array, ones, tens, hundreds, callback) {
+          callback(null, array.concat(ones + tens + hundreds));
+        }], []),
+        "_": ["array", function (array) {
+          expect(array).to.have.members([
+            111, 112, 113, 121, 122, 123, 131, 132, 133,
+            211, 212, 213, 221, 222, 223, 231, 232, 233,
+            311, 312, 313, 321, 322, 323, 331, 332, 333
+          ]);
+          done();
+        }]
+      })
+    });
+  });
+});

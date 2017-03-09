@@ -63,7 +63,7 @@ function dependentExecution(functions) {
 
   // start execution chain
   rootInjectors.forEach(function (injector) {
-    injector.execute();
+    injector.execute(true, 1);
   });
 }
 
@@ -151,7 +151,7 @@ function simpleChain(functions) {
     executor.valuePipe = valuePipe;
   }
 
-  rootInjector.execute();
+  rootInjector.execute(true, 1);
 }
 
 fore.try = function () {
@@ -193,6 +193,22 @@ fore.each = function foreEach(iterable) {
 fore.collect = function (fn) {
   var injector = desugar(fn);
   injector.mode = ExecutionMode.COLLECT;
+  return injector;
+};
+
+/**
+ * @param {function|Injector|*[]} fn
+ * @param {*} initialValue
+ * @return Injector
+ */
+fore.reduce = function (fn, initialValue) {
+  var injector = desugar(fn);
+  injector.mode = ExecutionMode.REDUCE;
+  if (injector.injections === null) {
+    injector.injections = [initialValue];
+  } else {
+    injector.injections.unshift(initialValue);
+  }
   return injector;
 };
 
@@ -335,6 +351,8 @@ AllCombinationsCombinator.prototype.notify = function (sender) {
   var valuePipes = this.valuePipes;
   var valueProviders = this.valueProviders;
 
+  var pipesDone = valuePipes.every(function (pipe) { return pipe.done });
+
   var currentLengths = valuePipes.map(function (valuePipe) {
     return valuePipe.length;
   });
@@ -380,7 +398,7 @@ AllCombinationsCombinator.prototype.notify = function (sender) {
     }
 
     // emit value combination
-    this.injector.execute(valuePipes.every(function (pipe) { return pipe.done }), possibleCombinations);
+    this.injector.execute(pipesDone && carry, possibleCombinations);
   }
 };
 
@@ -443,7 +461,8 @@ function Injection(id) {
 var ExecutionMode = {
   STANDARD: 0,
   EACH: 1,
-  COLLECT: 2
+  COLLECT: 2,
+  REDUCE: 3
 };
 
 /**
@@ -543,8 +562,22 @@ AsyncExecutor.prototype = Object.create(Executor.prototype);
 
 AsyncExecutor.prototype.execute = function (thisArg, args, done, expectedLength) {
   var valuePipe = this.valuePipe;
-  var injector = this.injector;
 
+  function emit(res) {
+    valuePipe.push(res, done, expectedLength);
+  }
+
+  executeFunction(this.fn, thisArg, args, this.injector, emit);
+};
+
+/**
+ * @param {function} fn
+ * @param {*} thisArg
+ * @param {*[]} args
+ * @param {Injector} injector
+ * @param {function(*)} emit
+ */
+function executeFunction(fn, thisArg, args, injector, emit) {
   function callback(err, res) {
     if (err !== null) {
       handleError(injector, err);
@@ -553,21 +586,17 @@ AsyncExecutor.prototype.execute = function (thisArg, args, done, expectedLength)
     }
   }
 
-  function emit(res) {
-    valuePipe.push(res, done, expectedLength);
-  }
-
-  var returnValue = this.fn.apply(thisArg, args.concat(callback));
+  var returnValue = fn.apply(thisArg, args.concat(callback));
   if (returnValue === void 0) {
     return;
   }
 
   if (returnValue instanceof Promise) {
-    executePromise(returnValue, valuePipe, injector);
+    executePromise(returnValue, injector, emit);
   } else {
     emit(returnValue);
   }
-};
+}
 
 /**
  * @param {Injector} injector
@@ -582,19 +611,20 @@ function PromiseExecutor(injector) {
 PromiseExecutor.prototype = Object.create(Executor.prototype);
 
 PromiseExecutor.prototype.execute = function (thisArg, args, done, expectedLength) {
-  executePromise(this.promise, this.valuePipe, this.injector);
+  var valuePipe = this.valuePipe;
+  executePromise(this.promise, this.injector, function (value) {
+    valuePipe.push(value, true, 1);
+  });
 };
 
 /**
  * @param {Promise} promise
- * @param {ValuePipe} valuePipe
  * @param {Injector} injector
+ * @param {function(*)} emit
  */
-function executePromise(promise, valuePipe, injector) {
+function executePromise(promise, injector, emit) {
   promise
-      .then(function (res) {
-        valuePipe.push(res, true, 1);
-      })
+      .then(emit)
       .catch(function (err) {
         handleError(injector, err);
       });
@@ -659,42 +689,100 @@ GeneratorExecutor.prototype.execute = function (thisArg, args, done, expectedLen
 
 /**
  * @param {Injector} injector
+ * @constructor
+ * @extends Executor
+ */
+function ReduceExecutor(injector) {
+  Executor.call(this, injector);
+  this.fn = injector.fn;
+  this.accumulationValue = injector.injections[0];
+
+  this.pendingExecutions = [];
+  this.isRunnning = false;
+
+  this.executedLength = 0;
+  this.done = false;
+}
+ReduceExecutor.prototype = Object.create(Executor.prototype);
+ReduceExecutor.prototype.execute = function (thisArg, args, done, expectedLength) {
+  var pendingExecutions = this.pendingExecutions;
+
+  // save snapshot
+  pendingExecutions.push([thisArg, args]);
+  this.done = this.done || done;
+
+  var execute = function () {
+    if (pendingExecutions.length === 0) {
+      return;
+    }
+
+    // restore snapshot
+    var parameters = pendingExecutions.pop();
+    parameters[1][0] = this.accumulationValue;
+
+    this.executedLength++;
+    executeFunction(this.fn, parameters[0], parameters[1], this.injector, function (value) {
+      if (this.done && pendingExecutions.length === 0) {
+        this.valuePipe.push(value, true, 1);
+      } else {
+        this.accumulationValue = value;
+        execute();
+      }
+    }.bind(this));
+  }.bind(this);
+
+  if (!this.isRunnning) {
+    this.isRunnning = true;
+    execute();
+    this.isRunnning = false;
+  }
+};
+
+/**
+ * @param {Injector} injector
  * @return {Executor}
  */
 function createExecutor(injector) {
-  if (injector.mode !== ExecutionMode.EACH) {
-    if (injector.fn instanceof Promise) {
-      return new PromiseExecutor(injector);
-    } else {
-      return new AsyncExecutor(injector);
-    }
-  }
-
-  var iterable = injector.fn;
-  if (Array.isArray(iterable)) {
-    var iterator;
-    if (arrayValuesSupported) {
-      iterator = iterable.values();
-    } else {
-      iterator = {
-        next: (function () {
-          var array = iterable;
-          var i = 0;
-          return function () {
-            return i < array.length ? {value: array[i++]} : {done: true};
-          }
-        })()
+  switch (injector.mode) {
+    case ExecutionMode.STANDARD:
+    case ExecutionMode.COLLECT:
+      if (injector.fn instanceof Promise) {
+        return new PromiseExecutor(injector);
+      } else {
+        return new AsyncExecutor(injector);
       }
-    }
-    return new IteratorExecutor(iterator, injector)
-  }
+      break;
 
-  if (typeof iterable === "function") {
-    return new GeneratorExecutor(iterable, injector);
-  }
+    case ExecutionMode.REDUCE:
+      return new ReduceExecutor(injector);
 
-  if (symbolsSupported && typeof iterable === "object" && typeof iterable[Symbol.iterator] === "function") {
-    return new IteratorExecutor(iterable[Symbol.iterator](), injector);
+    case ExecutionMode.EACH:
+      var iterable = injector.fn;
+      if (Array.isArray(iterable)) {
+        var iterator;
+        if (arrayValuesSupported) {
+          iterator = iterable.values();
+        } else {
+          iterator = {
+            next: (function () {
+              var array = iterable;
+              var i = 0;
+              return function () {
+                return i < array.length ? {value: array[i++]} : {done: true};
+              }
+            })()
+          }
+        }
+        return new IteratorExecutor(iterator, injector)
+      }
+
+      if (typeof iterable === "function") {
+        return new GeneratorExecutor(iterable, injector);
+      }
+
+      if (symbolsSupported && typeof iterable === "object" && typeof iterable[Symbol.iterator] === "function") {
+        return new IteratorExecutor(iterable[Symbol.iterator](), injector);
+      }
   }
 }
 
