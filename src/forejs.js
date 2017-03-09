@@ -44,12 +44,12 @@ function dependentExecution(functions) {
     // link them
     if (injector.injections !== null) {
       injector.injections = injector.injections.map(function (injection) {
-        return getValuePipeFromInjection(valuePipes, combinator, injection, hasInjections);
+        return createValueProviderFromInjection(valuePipes, combinator, injection, hasInjections);
       });
     }
 
     if (injector.thisInjection !== null) {
-      injector.thisInjection = getValuePipeFromInjection(valuePipes, combinator, injector.thisInjection, hasInjections);
+      injector.thisInjection = createValueProviderFromInjection(valuePipes, combinator, injector.thisInjection, hasInjections);
     }
 
     combinator.injector = injector;
@@ -74,13 +74,16 @@ function dependentExecution(functions) {
  * @param {boolean[]} hasInjections
  * @return {ValueProvider}
  */
-function getValuePipeFromInjection(valuePipes, combinator, injection, hasInjections) {
+function createValueProviderFromInjection(valuePipes, combinator, injection, hasInjections) {
   var valueProvider = new ValueProvider();
 
   if (injection instanceof Injection) {
     hasInjections[0] = true;
 
     var valuePipe = valuePipes[injection.id];
+    if (!valuePipe) {
+      throw new Error("Unbound identifier '" + injection.id + "'.");
+    }
 
     valuePipe.register(combinator);
     combinator.valuePipes.push(valuePipe);

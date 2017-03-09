@@ -324,6 +324,18 @@ describe("General functionality", function () {
   })
 });
 
+describe("Error reports", function () {
+  it("unbound identifier", function () {
+    expect(function() {
+      fore({
+        _: ["a", function (a) {
+          expect.fail();
+        }]
+      })
+    }).to.throw(/Unbound identifier/);
+  })
+});
+
 describe("Promise support", function () {
   function promiseOne() {
     return new Promise(function (resolve, reject) {
