@@ -44,12 +44,12 @@ function dependentExecution(functions) {
     // link them
     if (injector.injections !== null) {
       injector.injections = injector.injections.map(function (injection) {
-        return createValuePipeFromInjection(valuePipes, combinator, injection, hasInjections);
+        return getValuePipeFromInjection(valuePipes, combinator, injection, hasInjections);
       });
     }
 
     if (injector.thisInjection !== null) {
-      injector.thisInjection = createValuePipeFromInjection(valuePipes, combinator, injector.thisInjection, hasInjections);
+      injector.thisInjection = getValuePipeFromInjection(valuePipes, combinator, injector.thisInjection, hasInjections);
     }
 
     combinator.injector = injector;
@@ -74,7 +74,7 @@ function dependentExecution(functions) {
  * @param {boolean[]} hasInjections
  * @return {ValueProvider}
  */
-function createValuePipeFromInjection(valuePipes, combinator, injection, hasInjections) {
+function getValuePipeFromInjection(valuePipes, combinator, injection, hasInjections) {
   var valueProvider = new ValueProvider();
 
   if (injection instanceof Injection) {
@@ -278,7 +278,7 @@ function ValuePipe() {
 ValuePipe.prototype = Object.create(Array.prototype);
 
 /**
- * @param {AllCombinationsCombinator} observer
+ * @param {Combinator} observer
  */
 ValuePipe.prototype.register = function (observer) {
   if (this.observers.indexOf(observer) < 0) {
