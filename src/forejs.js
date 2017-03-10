@@ -107,6 +107,7 @@ function simpleChain(functions) {
 
   for (var i = 0; i < functions.length; i++) {
     var injector = desugar(functions[i]);
+    injector.isSimpleChain = true;
     var executor = createExecutor(injector);
     var valuePipe = valuePipes[i];
 
@@ -477,13 +478,16 @@ var ExecutionMode = {
  * @property {function(*)} errorHandler
  * @property {Executor} executor
  * @property {ExecutionMode} mode
+ * @property {boolean} isSimpleChain
  */
 function Injector(fn) {
   this.fn = fn;
   this.injections = null;
   this.thisInjection = null;
   this.errorHandler = null;
+
   this.mode = ExecutionMode.STANDARD;
+  this.isSimpleChain = false;
 
   this.executor = null;
 }
@@ -524,13 +528,51 @@ Injector.prototype.catch = function ctch(errorHandler) {
  * @protected
  */
 Injector.prototype.execute = function (done, expectedLength) {
-  var args = this.injections === null ? [] : this.injections.map(function (valueProvider) {
-        return valueProvider.value;
-      });
-  var thisArg = this.thisInjection && this.thisInjection.value;
+  var injections = this.injections;
+
+  var args;
+  if (this.isSimpleChain) {
+    args = [];
+    if (injections !== null) {
+      for (var i = 0; i < injections.length; i++) {
+        var value = injections[i].value;
+        if (value instanceof ArgumentsWrapper) {
+          args = args.concat(value.args);
+        } else {
+          args.push(value);
+        }
+      }
+    }
+  } else {
+    args = injections === null ? [] : injections.map(function (valueProvider) {
+          var value = valueProvider.value;
+          return (value instanceof ArgumentsWrapper) ? value.args : value;
+        });
+  }
+
+  var thisArg;
+  var thisInjection = this.thisInjection;
+  if (thisInjection instanceof ValueProvider) {
+    if (thisInjection.value instanceof ArgumentsWrapper) {
+      thisArg = thisInjection.value.args[0];
+    } else {
+      thisArg = thisInjection.value;
+    }
+  }
 
   this.executor.execute(thisArg, args, done, expectedLength);
 };
+
+/**
+ * @param {Arguments} arguments
+ * @constructor
+ */
+function ArgumentsWrapper(arguments) {
+  var args = this.args = new Array(arguments.length - 1);
+  for (var i = 1; i < arguments.length; i++) {
+    args[i - 1] = arguments[i];
+  }
+}
 
 /**
  * @constructor
@@ -585,6 +627,9 @@ function executeFunction(fn, thisArg, args, injector, emit) {
     if (err !== null) {
       handleError(injector, err);
     } else {
+      if (arguments.length > 2) {
+        res = new ArgumentsWrapper(arguments);
+      }
       emit(res);
     }
   }

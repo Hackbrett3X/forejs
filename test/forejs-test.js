@@ -292,7 +292,13 @@ describe("General functionality", function () {
             fore(
                 plusOne.inject.args(one),
                 plusOne,
-                callback.inject.args(null)
+                // we cannot write:
+                // callback.inject.args(null)
+                // because callback would be called with three arguments (null, 3, callback). The "callback" argument
+                // is automatically added by fore
+                function (three) {
+                  callback(null, three);
+                }
             )
           },
           plusOne,
@@ -310,7 +316,10 @@ describe("General functionality", function () {
           fore({
             two: plusOne.inject.args(one),
             three: ["two", plusOne],
-            _: [null, "three", callback]
+            // same here
+            _: ["three", function (three) {
+              callback(null, three)
+            }]
           })
         }],
         four: ["three", plusOne],
@@ -321,6 +330,53 @@ describe("General functionality", function () {
       })
     });
 
+  });
+
+  describe("multiple 'return values'", function () {
+    it("waterfall", function (done) {
+      fore(
+          function (callback) {
+            callback(null, 1, 2, 3);
+          },
+          function (one, two, three, callback) {
+            expect(one).equal(1);
+            expect(two).equal(2);
+            expect(three).equal(3);
+            expect(callback).to.be.a("function");
+            done();
+          }
+      )
+    });
+
+    it("waterfall and this injection", function (done) {
+      fore(
+          function (callback) {
+            callback(null, "a", "b", "c")
+          },
+          toUpperCase.inject.this(),
+          function (a) {
+            expect(a).equal("A");
+            done();
+          }
+      )
+    });
+
+    it("auto", function (done) {
+      fore({
+        oneTwoThree: function (callback) {
+          callback(null, 1, 2, 3);
+        },
+        tenTwentyThirty: function (callback) {
+          callback(null, 10, 20, 30);
+        },
+        _: ["oneTwoThree", "tenTwentyThirty", function (oneTwoThree, tenTwentyThirty, callback) {
+          expect(oneTwoThree).to.have.members([1, 2, 3]);
+          expect(tenTwentyThirty).to.have.members([10, 20, 30]);
+          expect(callback).to.be.a("function");
+          done();
+        }]
+      })
+    })
   })
 });
 
