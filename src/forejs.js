@@ -634,7 +634,12 @@ function executeFunction(fn, thisArg, args, injector, emit) {
     }
   }
 
-  var returnValue = fn.apply(thisArg, args.concat(callback));
+  try {
+    var returnValue = fn.apply(thisArg, args.concat(callback));
+  } catch (e) {
+    handleError(injector, e);
+  }
+
   if (returnValue === void 0) {
     return;
   }
