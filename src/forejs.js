@@ -4,6 +4,51 @@ var symbolsSupported = typeof Symbol === "function" && typeof Symbol.iterator ==
 var arrayValuesSupported = typeof Array.prototype.values === "function";
 
 /**
+ * Optimized Array#forEach
+ * @template T
+ * @param {T[]|Arguments} array
+ * @param {function(T, number)} f
+ */
+function each(array, f) {
+  var i = -1, length = array.length;
+  while (++i < length) {
+    f(array[i], i);
+  }
+}
+
+/**
+ * Optimized Array#map
+ * @template T
+ * @template S
+ * @param {T[]|Arguments} array
+ * @param {function(T, number): S} f
+ * @return S[]
+ */
+function map(array, f) {
+  var i = -1, length = array.length, result = new Array(length);
+  while (++i < length) {
+    result[i] = f(array[i], i);
+  }
+  return result;
+}
+
+/**
+ * Optimized in-place Array#map
+ * @template T
+ * @template S
+ * @param {T[]|Arguments} array
+ * @param {function(T, number): S} f
+ * @return S[]
+ */
+function replace(array, f) {
+  var i = -1, length = array.length;
+  while (++i < length) {
+    array[i] = f(array[i], i);
+  }
+  return array;
+}
+
+/**
  * @callback Callback
  * @param {*} err
  * @param {*=} res
@@ -27,12 +72,12 @@ function dependentExecution(functions) {
   var ids = Object.getOwnPropertyNames(functions);
 
   var valuePipes = {};
-  ids.forEach(function (id) {
+  each(ids, function (id) {
     valuePipes[id] = new ValuePipe();
   });
 
   var rootInjectors = [];
-  ids.forEach(function (id) {
+  each(ids, function (id) {
     var hasInjections = [false];
 
     // create nodes
@@ -43,7 +88,7 @@ function dependentExecution(functions) {
 
     // link them
     if (injector.injections !== null) {
-      injector.injections = injector.injections.map(function (injection) {
+      injector.injections = map(injector.injections, function (injection) {
         return createValueProviderFromInjection(valuePipes, combinator, injection, hasInjections);
       });
     }
@@ -62,7 +107,7 @@ function dependentExecution(functions) {
   });
 
   // start execution chain
-  rootInjectors.forEach(function (injector) {
+  each(rootInjectors, function (injector) {
     injector.execute(true, 1);
   });
 }
@@ -99,19 +144,19 @@ function createValueProviderFromInjection(valuePipes, combinator, injection, has
  * @param {*} functions
  */
 function simpleChain(functions) {
-  var valuePipes = Array.prototype.map.call(functions, function () {
+  var valuePipes = map(functions, function () {
     return new ValuePipe();
   });
 
-  var rootInjector;
+  var rootInjector = null;
 
-  for (var i = 0; i < functions.length; i++) {
-    var injector = desugar(functions[i]);
+  each(functions, function (fn, i) {
+    var injector = desugar(fn);
     injector.isSimpleChain = true;
     var executor = createExecutor(injector);
     var valuePipe = valuePipes[i];
 
-    injector.injections = injector.injections && injector.injections.map(function (injection) {
+    injector.injections = injector.injections && replace(injector.injections, function (injection) {
       var valueProvider = new ValueProvider();
       valueProvider.value = injection;
       return valueProvider;
@@ -153,7 +198,7 @@ function simpleChain(functions) {
 
     injector.executor = executor;
     executor.valuePipe = valuePipe;
-  }
+  });
 
   rootInjector.execute(true, 1);
 }
@@ -164,18 +209,15 @@ fore.try = function () {
     "catch": function (errorHandler) {
       var functions = args[0];
       if (typeof functions === "object" && Object.getPrototypeOf(functions) === Object.prototype) {
-        Object.getOwnPropertyNames(args[0]).forEach(function (name) {
+        each(Object.getOwnPropertyNames(functions), function (name) {
           functions[name] = injectErrorHandler(functions[name], errorHandler);
         });
         fore(functions);
       } else {
-        var newArgs = new Array(args.length);
-        for (var i = 0; i < args.length; i++) {
-          newArgs[i] = injectErrorHandler(args[i], errorHandler);
-        }
-        fore.apply(null, newArgs);
+        fore.apply(null, map(args, function (f) {
+          return injectErrorHandler(f, errorHandler);
+        }));
       }
-
     }
   }
 };
@@ -247,9 +289,13 @@ function desugar(fn) {
   if (Array.isArray(fn)) {
     // desugar ["a", "b", function (a, b) {...}]
     var injector = fn[fn.length - 1].inject;
-    return injector.args.apply(injector, fn.slice(0, fn.length - 1).map(function (arg) {
-      return typeof arg === "string" ? fore.ref(arg) : arg;
-    }));
+    var i = -1, length = fn.length - 1;
+    var injections = injector.injections = new Array(length);
+    while (++i < length) {
+      var arg = fn[i];
+      injections[i] = typeof arg === "string" ? fore.ref(arg) : arg;
+    }
+    return injector;
   }
 
   if (!(fn instanceof Injector)) {
@@ -299,18 +345,20 @@ ValuePipe.prototype.push = function (value, done, expectedLength) {
   Array.prototype.push.call(this, value);
 
   this.updateDone(done, expectedLength);
-  this.observers.forEach(function (observer) {
-    observer.notify(this);
-  }, this);
+  var sender = this;
+  each(this.observers, function (observer) {
+    observer.notify(sender);
+  });
 };
 
 ValuePipe.prototype.pushFailure = function (done, expectedLength) {
   this.failedLength++;
 
   this.updateDone(done, expectedLength);
-  this.observers.forEach(function (observer) {
-    observer.notifyFailure(this);
-  }, this);
+  var sender = this;
+  each(this.observers, function (observer) {
+    observer.notifyFailure(sender);
+  });
 };
 
 /**
@@ -383,14 +431,21 @@ AllCombinationsCombinator.prototype.notify = function (sender) {
   var valuePipes = this.valuePipes;
   var valueProviders = this.valueProviders;
 
-  var pipesDone = valuePipes.every(function (pipe) { return pipe.done });
+  var pipesDone = true;
+  var possibleCombinations = 1;
+  var senderIndex = -1;
 
-  var currentLengths = valuePipes.map(function (valuePipe) {
-    return valuePipe.length;
-  });
+  var currentLengths = map(valuePipes, function (valuePipe, i) {
+    pipesDone &= valuePipe.done;
 
-  var possibleCombinations = currentLengths.reduce(function (length, l) {
-    return length * l;
+    var length = valuePipe.length;
+    possibleCombinations *= length;
+
+    if (valuePipe === sender) {
+      senderIndex = i;
+    }
+
+    return length;
   });
 
   if (this.executionCounter >= possibleCombinations) {
@@ -400,19 +455,19 @@ AllCombinationsCombinator.prototype.notify = function (sender) {
 
   this.executionCounter = possibleCombinations;
 
-  var senderIndex = valuePipes.indexOf(sender);
-
   valueProviders[senderIndex].value = valuePipes[senderIndex][currentLengths[senderIndex] - 1];
 
-  // TODO: is ES6
-  var currentIndices = new Array(valuePipes.length).fill(0);
+  var currentIndices = replace(new Array(valuePipes.length), function () {
+    return 0;
+  });
 
   var carry = false;
   while (!carry) {
     carry = true;
 
     // set current values and count one step
-    for (var i = 0; i < valuePipes.length; i++) {
+    var i = -1, length = valuePipes.length;
+    while (++i < length) {
       if (i === senderIndex) {
         continue;
       }
@@ -450,10 +505,9 @@ CollectorCombinator.prototype.notify = CollectorCombinator.prototype.notifyFailu
   }
 
   var valueProviders = this.valueProviders;
-  for (var i = 0; i < valuePipes.length; i++) {
-    var valuePipe = valuePipes[i];
+  each(valuePipes, function (valuePipe, i) {
     valueProviders[i].value = valuePipe.slice(0);
-  }
+  });
 
   this.injector.execute(true, 1);
 };
@@ -528,10 +582,9 @@ function Injector(fn) {
  * @return {Injector}
  */
 Injector.prototype.args = function args() {
-  var injections = this.injections = new Array(arguments.length);
-  for (var i = 0; i < arguments.length; i++) {
-    injections[i] = arguments[i];
-  }
+  this.injections = map(arguments, function (arg) {
+    return arg;
+  });
   return this;
 };
 
@@ -565,17 +618,17 @@ Injector.prototype.execute = function (done, expectedLength) {
   if (this.isSimpleChain) {
     args = [];
     if (injections !== null) {
-      for (var i = 0; i < injections.length; i++) {
-        var value = injections[i].value;
+      each(injections, function (valueProvider) {
+        var value = valueProvider.value;
         if (value instanceof ArgumentsWrapper) {
-          args = args.concat(value.args);
+          Array.prototype.push.apply(args, value.args);
         } else {
           args.push(value);
         }
-      }
+      });
     }
   } else {
-    args = injections === null ? [] : injections.map(function (valueProvider) {
+    args = injections === null ? [] : map(injections, function (valueProvider) {
           var value = valueProvider.value;
           return (value instanceof ArgumentsWrapper) ? value.args : value;
         });
