@@ -718,8 +718,10 @@ function executeFunction(fn, thisArg, args, injector, emit) {
     }
   }
 
+  args.push(callback);
+
   try {
-    var returnValue = fn.apply(thisArg, args.concat(callback));
+    var returnValue = fn.apply(thisArg, args);
   } catch (e) {
     handleError(injector, e);
   }
