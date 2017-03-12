@@ -37,7 +37,7 @@ function dependentExecution(functions) {
 
     // create nodes
     var injector = desugar(functions[id]);
-    var combinator = createCombinator(injector);
+    var combinator = createCombinator(injector, false);
     var executor = createExecutor(injector);
     var valuePipe = valuePipes[id];
 
@@ -118,7 +118,7 @@ function simpleChain(functions) {
     });
 
     if (i > 0) {
-      var combinator = createCombinator(injector);
+      var combinator = createCombinator(injector, true);
       var inputValuePipe = valuePipes[i - 1];
       inputValuePipe.register(combinator);
 
@@ -298,29 +298,36 @@ ValuePipe.prototype.register = function (observer) {
 ValuePipe.prototype.push = function (value, done, expectedLength) {
   Array.prototype.push.call(this, value);
 
-  this.notifyObservers(done, expectedLength);
+  this.updateDone(done, expectedLength);
+  this.observers.forEach(function (observer) {
+    observer.notify(this);
+  }, this);
 };
 
 ValuePipe.prototype.pushFailure = function (done, expectedLength) {
   this.failedLength++;
 
-  this.notifyObservers(done, expectedLength);
+  this.updateDone(done, expectedLength);
+  this.observers.forEach(function (observer) {
+    observer.notifyFailure(this);
+  }, this);
 };
 
-ValuePipe.prototype.notifyObservers = function (done, expectedLength) {
+/**
+ * @param {boolean} done
+ * @param {number} expectedLength
+ * @private
+ */
+ValuePipe.prototype.updateDone = function (done, expectedLength) {
   if (done) {
     this.reachedLast = true;
   }
 
   this.expectedLength = Math.max(this.expectedLength, expectedLength);
-
   this.done = this.reachedLast && this.length === this.expectedLength - this.failedLength;
-
-  var sender = this;
-  this.observers.forEach(function (observer) {
-    observer.notify(sender);
-  });
 };
+
+
 
 /**
  * @constructor
@@ -339,6 +346,27 @@ function Combinator() {
  * @abstract
  */
 Combinator.prototype.notify = function (sender) {
+};
+
+/**
+ * @param {ValuePipe} sender
+ */
+Combinator.prototype.notifyFailure = function (sender) {
+};
+
+/**
+ * @constructor
+ * @extends Combinator
+ */
+function SimpleCombinator() {
+  Combinator.call(this);
+}
+SimpleCombinator.prototype = Object.create(Combinator.prototype);
+
+SimpleCombinator.prototype.notify = function (sender) {
+  var valuePipe = this.valuePipes[0];
+  this.valueProviders[0].value = valuePipe[valuePipe.length - 1];
+  this.injector.execute(valuePipe.done, valuePipe.length);
 };
 
 /**
@@ -415,7 +443,7 @@ function CollectorCombinator() {
 }
 CollectorCombinator.prototype = Object.create(Combinator.prototype);
 
-CollectorCombinator.prototype.notify = function (sender) {
+CollectorCombinator.prototype.notify = CollectorCombinator.prototype.notifyFailure = function (sender) {
   var valuePipes = this.valuePipes;
   if (!valuePipes.every(function (pipe) { return pipe.done })) {
     return;
@@ -432,11 +460,14 @@ CollectorCombinator.prototype.notify = function (sender) {
 
 /**
  * @param {Injector} injector
+ * @param {boolean} simple
  * @return {*}
  */
-function createCombinator(injector) {
+function createCombinator(injector, simple) {
   if (injector.mode === ExecutionMode.COLLECT) {
     return new CollectorCombinator();
+  } else if (simple) {
+    return new SimpleCombinator();
   }
   return new AllCombinationsCombinator();
 }
