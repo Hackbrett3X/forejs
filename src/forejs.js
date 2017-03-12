@@ -49,6 +49,16 @@ function replace(array, f) {
 }
 
 /**
+ * Id function
+ * @template T
+ * @param {T} arg
+ * @return {T}
+ */
+function id(arg) {
+  return arg;
+}
+
+/**
  * @callback Callback
  * @param {*} err
  * @param {*=} res
@@ -506,7 +516,7 @@ CollectorCombinator.prototype.notify = CollectorCombinator.prototype.notifyFailu
 
   var valueProviders = this.valueProviders;
   each(valuePipes, function (valuePipe, i) {
-    valueProviders[i].value = valuePipe.slice(0);
+    valueProviders[i].value = map(valuePipe, id);
   });
 
   this.injector.execute(true, 1);
