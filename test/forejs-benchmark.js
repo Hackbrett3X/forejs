@@ -78,3 +78,18 @@ function plus(n, m, callback) {
     }, {defer: true})
     .on("complete", report)
     .run();
+
+const array = [1, 2, 3, 4, 5];
+(new benchmark.Suite("each, collect"))
+    .add("foreJs", function (deferred) {
+      fore(
+          fore.each(array),
+          plusOne,
+          fore.collect(() => deferred.resolve())
+      )
+    }, {defer: true})
+    .add("async", function (deferred) {
+      async.map(array, plusOne, () => deferred.resolve())
+    }, {defer: true})
+    .on("complete", report)
+    .run();
