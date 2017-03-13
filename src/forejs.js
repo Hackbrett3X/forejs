@@ -140,6 +140,7 @@ function createValueProviderFromInjection(valuePipes, combinator, injection, has
       throw new Error("Unbound identifier '" + injection.id + "'.");
     }
 
+    // TODO: replace push
     valuePipe.register(combinator);
     combinator.valuePipes.push(valuePipe);
     combinator.valueProviders.push(valueProvider);
@@ -324,9 +325,12 @@ fore.ref = function ref(id) {
 
 /**
  * @constructor
- * @extends Array
+ * @property {*[]} values
+ * @property {boolean} done
  */
 function ValuePipe() {
+  this.values = [];
+  
   this.observers = [];
 
   this.done = false;
@@ -335,7 +339,6 @@ function ValuePipe() {
   this.expectedLength = 0;
   this.failedLength = 0;
 }
-ValuePipe.prototype = Object.create(Array.prototype);
 
 /**
  * @param {Combinator} observer
@@ -352,7 +355,7 @@ ValuePipe.prototype.register = function (observer) {
  * @param {number} expectedLength
  */
 ValuePipe.prototype.push = function (value, done, expectedLength) {
-  Array.prototype.push.call(this, value);
+  this.values.push(value);
 
   this.updateDone(done, expectedLength);
   var sender = this;
@@ -382,7 +385,7 @@ ValuePipe.prototype.updateDone = function (done, expectedLength) {
   }
 
   this.expectedLength = Math.max(this.expectedLength, expectedLength);
-  this.done = this.reachedLast && this.length === this.expectedLength - this.failedLength;
+  this.done = this.reachedLast && this.values.length === this.expectedLength - this.failedLength;
 };
 
 
@@ -423,8 +426,9 @@ SimpleCombinator.prototype = Object.create(Combinator.prototype);
 
 SimpleCombinator.prototype.notify = function (sender) {
   var valuePipe = this.valuePipes[0];
-  this.valueProviders[0].value = valuePipe[valuePipe.length - 1];
-  this.injector.execute(valuePipe.done, valuePipe.length);
+  var values = valuePipe.values;
+  this.valueProviders[0].value = values[values.length - 1];
+  this.injector.execute(valuePipe.done, values.length);
 };
 
 /**
@@ -448,7 +452,7 @@ AllCombinationsCombinator.prototype.notify = function (sender) {
   var currentLengths = map(valuePipes, function (valuePipe, i) {
     pipesDone &= valuePipe.done;
 
-    var length = valuePipe.length;
+    var length = valuePipe.values.length;
     possibleCombinations *= length;
 
     if (valuePipe === sender) {
@@ -465,7 +469,7 @@ AllCombinationsCombinator.prototype.notify = function (sender) {
 
   this.executionCounter = possibleCombinations;
 
-  valueProviders[senderIndex].value = valuePipes[senderIndex][currentLengths[senderIndex] - 1];
+  valueProviders[senderIndex].value = valuePipes[senderIndex].values[currentLengths[senderIndex] - 1];
 
   var currentIndices = replace(new Array(valuePipes.length), function () {
     return 0;
@@ -482,7 +486,7 @@ AllCombinationsCombinator.prototype.notify = function (sender) {
         continue;
       }
 
-      valueProviders[i].value = valuePipes[i][currentIndices[i]];
+      valueProviders[i].value = valuePipes[i].values[currentIndices[i]];
 
       if (carry) {
         currentIndices[i]++;
@@ -510,13 +514,14 @@ CollectorCombinator.prototype = Object.create(Combinator.prototype);
 
 CollectorCombinator.prototype.notify = CollectorCombinator.prototype.notifyFailure = function (sender) {
   var valuePipes = this.valuePipes;
+  // TODO: every
   if (!valuePipes.every(function (pipe) { return pipe.done })) {
     return;
   }
 
   var valueProviders = this.valueProviders;
   each(valuePipes, function (valuePipe, i) {
-    valueProviders[i].value = map(valuePipe, id);
+    valueProviders[i].value = map(valuePipe.values, id);
   });
 
   this.injector.execute(true, 1);
