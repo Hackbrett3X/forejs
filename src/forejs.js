@@ -114,7 +114,7 @@ function dependentExecution(functions) {
 
     // link them
     if (injector.injections !== null) {
-      injector.injections = map(injector.injections, function (injection) {
+      replace(injector.injections, function (injection) {
         return createValueProviderFromInjection(valuePipes, combinator, injection, hasInjections);
       });
     }
@@ -183,7 +183,7 @@ function simpleChain(functions) {
     var executor = createExecutor(injector);
     var valuePipe = valuePipes[i];
 
-    injector.injections = injector.injections && replace(injector.injections, function (injection) {
+    injector.injections && replace(injector.injections, function (injection) {
       var valueProvider = new ValueProvider();
       valueProvider.value = injection;
       return valueProvider;
