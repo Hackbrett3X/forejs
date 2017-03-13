@@ -208,19 +208,20 @@ describe("General functionality", function () {
       });
     });
 
-    it("throw", function (done) {
-      fore.try(
-          function () {
-            throw new Error("msg")
-          },
-          function () {
-            expect.fail();
-          }
-      ).catch(function (err) {
-        expect(err.message).to.equal("msg");
-        done();
-      })
-    })
+    // this functionality was removed due to performance issues
+    // it("throw", function (done) {
+    //   fore.try(
+    //       function () {
+    //         throw new Error("msg")
+    //       },
+    //       function () {
+    //         expect.fail();
+    //       }
+    //   ).catch(function (err) {
+    //     expect(err.message).to.equal("msg");
+    //     done();
+    //   })
+    // })
   });
 
   describe("Complex dependencies", function () {
