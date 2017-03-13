@@ -49,6 +49,22 @@ function replace(array, f) {
 }
 
 /**
+ * Optimized Array#every
+ * @template T
+ * @param {T[]|Arguments} array
+ * @param {function(T, number): boolean} predicate
+ * @return boolean
+ */
+function every(array, predicate) {
+  var i = -1, length = array.length;
+  while (++i < length) {
+    if (!predicate(array[i], i))
+    return false;
+  }
+  return true;
+}
+
+/**
  * Id function
  * @template T
  * @param {T} arg
@@ -514,8 +530,7 @@ CollectorCombinator.prototype = Object.create(Combinator.prototype);
 
 CollectorCombinator.prototype.notify = CollectorCombinator.prototype.notifyFailure = function (sender) {
   var valuePipes = this.valuePipes;
-  // TODO: every
-  if (!valuePipes.every(function (pipe) { return pipe.done })) {
+  if (!every(valuePipes, function (pipe) { return pipe.done })) {
     return;
   }
 
