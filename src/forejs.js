@@ -92,7 +92,7 @@ function dependentExecution(functions) {
 
     // create nodes
     var injector = desugar(functions[id]);
-    var combinator = createCombinator(injector, false);
+    var combinator = createCombinator(injector);
     var executor = createExecutor(injector);
     var valuePipe = valuePipes[id];
 
@@ -173,7 +173,7 @@ function simpleChain(functions) {
     });
 
     if (i > 0) {
-      var combinator = createCombinator(injector, true);
+      var combinator = createCombinator(injector);
       var inputValuePipe = valuePipes[i - 1];
       inputValuePipe.register(combinator);
 
@@ -524,13 +524,14 @@ CollectorCombinator.prototype.notify = CollectorCombinator.prototype.notifyFailu
 
 /**
  * @param {Injector} injector
- * @param {boolean} simple
  * @return {*}
  */
-function createCombinator(injector, simple) {
+function createCombinator(injector) {
   if (injector.mode === ExecutionMode.COLLECT) {
     return new CollectorCombinator();
-  } else if (simple) {
+  } else if (injector.injections === null
+      || (injector.injections.length <= 1 && injector.thisInjection === null)
+      || (injector.thisInjection !== null && (injector.injections === null || injector.injections.length === 0))) {
     return new SimpleCombinator();
   }
   return new AllCombinationsCombinator();
