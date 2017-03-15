@@ -678,13 +678,14 @@ Injector.prototype.execute = function (done, expectedLength) {
 };
 
 /**
- * @param {Arguments} arguments
+ * @param {Arguments} args
  * @constructor
  */
-function ArgumentsWrapper(arguments) {
-  var args = this.args = new Array(arguments.length - 1);
-  for (var i = 1; i < arguments.length; i++) {
-    args[i - 1] = arguments[i];
+function ArgumentsWrapper(args) {
+  var clone = this.args = new Array(args.length - 1);
+  var i = 0, length = args.length;
+  while (++i < length) {
+    clone[i - 1] = args[i];
   }
 }
 
