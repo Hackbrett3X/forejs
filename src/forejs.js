@@ -291,12 +291,11 @@ fore.reduce = function (fn, initialValue) {
  * @return {Injector}
  */
 function injectErrorHandler(injector, errorHandler) {
-  if (injector instanceof Injector) {
+  injector = desugar(injector);
+  if (!injector.errorHandler) {
     injector.errorHandler = errorHandler;
-    return injector;
-  } else {
-    return injector.inject.catch(errorHandler);
   }
+  return injector;
 }
 
 /**

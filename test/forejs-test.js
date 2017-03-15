@@ -623,6 +623,17 @@ describe("syntactic sugar: injections as array", function () {
       }]
     })
   });
+
+  it("general catch and array syntactic sugar", function (done) {
+    fore.try(
+        [1, function (one, callback) {
+          callback("msg");
+        }]
+    ).catch(function (err) {
+      expect(err).equal("msg");
+      done();
+    });
+  });
 });
 
 describe("each", function () {
