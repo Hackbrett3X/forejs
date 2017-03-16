@@ -6,7 +6,8 @@
   "scripts": {
     "test": "mocha test/forejs-test.js",
     "benchmark": "node test/forejs-benchmark.js",
-    "build": "node build.js"
+    "build": "node build.js",
+    "dist": "npm run build && npm run test dist/forejs"
   },
   "author": {
     "name": "Lukas Holländer",
