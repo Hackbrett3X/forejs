@@ -4,7 +4,8 @@
   "description": "TODO",
   "main": "src/forejs.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha test/forejs-test.js",
+    "benchmark": "node test/forejs-benchmark.js"
   },
   "author": {
     "name": "Lukas Holländer",
