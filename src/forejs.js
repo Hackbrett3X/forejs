@@ -808,7 +808,7 @@ function IteratorExecutor(iterator, injector) {
 }
 IteratorExecutor.prototype = Object.create(Executor.prototype);
 
-IteratorExecutor.prototype.execute = function (thisArg, args, done) {
+IteratorExecutor.prototype.execute = function (thisArg, args, done, expectedLength) {
   var iterator = this.iterator;
   var valuePipe = this.valuePipe;
   var injector = this.injector;
@@ -917,7 +917,6 @@ function createExecutor(injector) {
       } else {
         return new AsyncExecutor(injector);
       }
-      break;
 
     case ExecutionMode.REDUCE:
       return new ReduceExecutor(injector);
