@@ -2,10 +2,11 @@
   "name": "forejs",
   "version": "0.1.0",
   "description": "TODO",
-  "main": "src/forejs.js",
+  "main": "dist/forejs.js",
   "scripts": {
     "test": "mocha test/forejs-test.js",
-    "benchmark": "node test/forejs-benchmark.js"
+    "benchmark": "node test/forejs-benchmark.js",
+    "build": "node build.js"
   },
   "author": {
     "name": "Lukas Holländer",
@@ -16,6 +17,7 @@
     "async": "^2.1.5",
     "benchmark": "^2.1.3",
     "chai": "^3.5.0",
-    "mocha": "^3.2.0"
+    "mocha": "^3.2.0",
+    "rimraf": "^2.6.1"
   }
 }
