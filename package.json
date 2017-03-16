@@ -11,7 +11,7 @@
     "name": "Lukas Holländer",
     "email": "hollaender.lukas@googlemail.com"
   },
-  "license": "TODO",
+  "license": "MIT",
   "devDependencies": {
     "async": "^2.1.5",
     "benchmark": "^2.1.3",
