@@ -1,7 +1,7 @@
 {
   "name": "forejs",
   "version": "0.1.0",
-  "description": "TODO",
+  "description": "A lightweight module which provides powerful functionality to organize asynchronous JavaScript code.",
   "main": "dist/forejs.js",
   "scripts": {
     "test": "mocha test/forejs-test.js",
