@@ -3,6 +3,7 @@ const ref = fore.ref;
 const fs = require("fs");
 const path = require("path");
 const rimraf = require("rimraf");
+const generateReadme = require("./generateReadme");
 
 const srcName = "forejs.js";
 const srcPath = "./src";
@@ -11,6 +12,8 @@ const packagePath = "./package.json";
 
 const distPath = "./dist";
 const distName = "forejs.js";
+
+const readmePath = "README.md";
 
 const encoding = "utf-8";
 
@@ -35,7 +38,10 @@ fore.try({
     fs.writeFile(path.join(distPath, distName), output, cb);
   }],
 
-  _: ["write", () => console.log("Build successful.")]
+  readme: generateReadme.inject.args(ref("code")),
+  writeReadme: fs.writeFile.inject.args(readmePath, ref("readme")),
+
+  _: ["write", "writeReadme", () => console.log("Build successful.")]
 }).catch(console.error);
 
 function wrapWithMultilineComment(string) {

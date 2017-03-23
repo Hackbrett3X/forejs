@@ -254,13 +254,13 @@ fore.try = function () {
  * @return {Injector}
  */
 fore.each = function foreEach(iterable) {
-  var injector = !(iterable instanceof Injector) ? new Injector(iterable) : iterable;
+  var injector = (iterable instanceof Injector) ? iterable : new Injector(iterable);
   injector.mode = ExecutionMode.EACH;
   return injector;
 };
 
 /**
- * @param {function|Injector|*[]} fn
+ * @param {function|Injector|Array.<*>} fn
  * @return {Injector}
  */
 fore.collect = function (fn) {
@@ -270,7 +270,7 @@ fore.collect = function (fn) {
 };
 
 /**
- * @param {function|Injector|*[]} fn
+ * @param {function|Injector|Array.<*>} fn
  * @param {*} initialValue
  * @return Injector
  */
@@ -307,7 +307,7 @@ function handleError(injector, err) {
 }
 
 /**
- * @param {*[]|function|Injector} fn
+ * @param {Array.<*>|function|Injector} fn
  * @param {Injector} fn.injector
  * @return {Injector}
  */
@@ -340,7 +340,7 @@ fore.ref = function ref(id) {
 
 /**
  * @constructor
- * @property {*[]} values
+ * @property {Array.<*>} values
  * @property {boolean} done
  */
 function ValuePipe() {
@@ -587,13 +587,6 @@ var ExecutionMode = {
 /**
  * @param {function|Array|Promise} fn
  * @constructor
- * @property {function|Array} fn
- * @property {(Injection|ValueProvider)[]} injections
- * @property {Injection|ValueProvider} thisInjection
- * @property {function(*)} errorHandler
- * @property {Executor} executor
- * @property {ExecutionMode} mode
- * @property {boolean} isSimpleChain
  */
 function Injector(fn) {
   this.fn = fn;
@@ -702,7 +695,7 @@ function Executor(injector) {
 /**
  * @abstract
  * @param {Object|null} thisArg
- * @param {*[]} args
+ * @param {Array.<*>} args
  * @param {boolean} done
  * @param {number} expectedLength
  */
@@ -733,7 +726,7 @@ AsyncExecutor.prototype.execute = function (thisArg, args, done, expectedLength)
 /**
  * @param {function} fn
  * @param {*} thisArg
- * @param {*[]} args
+ * @param {Array.<*>} args
  * @param {Injector} injector
  * @param {function(*)} emit
  */
