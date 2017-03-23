@@ -2,7 +2,8 @@ const expect = require("chai").expect;
 const it = require("mocha").it;
 const describe = require("mocha").describe;
 
-const forePath = process.argv[3] || "src/forejs";
+const forePath = process.argv.length === 4 ? process.argv[3] : "src/forejs";
+console.log("Testing file: '" + forePath + "'");
 const fore = require(require("path").join("../", forePath));
 
 function delay(res, callback) {
