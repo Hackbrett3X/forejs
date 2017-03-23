@@ -34,7 +34,7 @@ fore.try({
     ].join("\n\n");
   }],
 
-  write: ["output", "clear", function (output, clear, cb) {
+  write: ["output", "distFolder", function (output, distFolder, cb) {
     fs.writeFile(path.join(distPath, distName), output, cb);
   }],
 
