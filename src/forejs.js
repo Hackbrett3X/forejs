@@ -585,6 +585,10 @@ var ExecutionMode = {
 };
 
 /**
+ * Provides methods to inject dependencies or constant values into functions. This means that a function will be
+ * "partially evaluated". Additional arguments like the callback function or, in simple mode, the "return values" of the
+ * previous function are provided by {@link fore}.
+ * Retrieved by {@link inject}.
  * @param {function|Array|Promise} fn
  * @constructor
  */
@@ -601,8 +605,16 @@ function Injector(fn) {
 }
 
 /**
+ * Injects constant values or dependencies into this function starting from the left. Use {@link fore.ref} to inject
+ * dependencies in auto mode. If no string constants need to be injected, <code>inject.args(...)</code> can also be
+ * written using a shorter array notation, which is especially handy for anonymous functions:
+ * @example
+ * ((arg1, arg2) => ...).inject.args(fore.ref("arg1"), fore.ref("arg2"))
+ * // shorter:
+ * ["arg1", "arg2", (arg1, arg2) => ...]
  * @param {Injection|*} arguments
  * @return {Injector}
+ * @chainable
  */
 Injector.prototype.args = function args() {
   this.injections = map(arguments, function (arg) {
@@ -612,8 +624,13 @@ Injector.prototype.args = function args() {
 };
 
 /**
+ * Injects a constant value or dependency as <code>this</code> argument. Use {@link fore.ref} to inject dependencies in
+ * auto mode. In chain mode, call this function without arguments in order to retrieve the "return value" of the previous
+ * function as <code>this</code> argument instead of as first argument. If the previous function "returns" multiple values
+ * only the first one will be passed, the others are ignored.
  * @param {Injection|Object} object
  * @return {Injector}
+ * @chainable
  */
 Injector.prototype.this = function ths(object) {
   this.thisInjection = object;
@@ -621,8 +638,17 @@ Injector.prototype.this = function ths(object) {
 };
 
 /**
+ * Attaches an error handler to this function that will be called if the function invokes its callback with a non-null
+ * first argument. This error will be passed as first argument to the errorHandler. Once an error occurs, the propagation
+ * of this execution branch will be stopped.
+ *
+ * It also possible to register a general error handler to the entire fore-block using {@link fore.try}. Error handlers
+ * attached directly to the function are prioritized.
+ *
+ * If an error occurs and no error handler has been registered the execution will break. So catch your errors!
  * @param {function(*)} errorHandler
  * @return {Injector}
+ * @chainable
  */
 Injector.prototype.catch = function ctch(errorHandler) {
   this.errorHandler = errorHandler;
@@ -945,6 +971,8 @@ function createExecutor(injector) {
 }
 
 /**
+ * Starts the injection of values or dependencies into this function. Should be followed by one of the {@link Injector}
+ * methods. Use <code>inject</code> to avoid function wrappers or things like {@link Function.prototype.bind}.
  * @return {Injector}
  */
 function inject() {
