@@ -332,7 +332,9 @@ function desugar(fn) {
 }
 
 /**
- * @param {String} id
+ * References the result of another function when using auto mode. To be used within {@link Injector.prototype.args} or
+ * {@link Injector.prototype.this}
+ * @param {String} id The id to reference.
  */
 fore.ref = function ref(id) {
   return new Injection(id);
@@ -588,8 +590,7 @@ var ExecutionMode = {
  * Provides methods to inject dependencies or constant values into functions. This means that a function will be
  * "partially evaluated". Additional arguments like the callback function or, in simple mode, the "return values" of the
  * previous function are provided by {@link fore}.
- * Retrieved by {@link inject}.
- * @param {function|Array|Promise} fn
+ * Retrieved by {@link inject}. Don't call this constructor by yourself.
  * @constructor
  */
 function Injector(fn) {
@@ -612,8 +613,8 @@ function Injector(fn) {
  * ((arg1, arg2) => ...).inject.args(fore.ref("arg1"), fore.ref("arg2"))
  * // shorter:
  * ["arg1", "arg2", (arg1, arg2) => ...]
- * @param {Injection|*} arguments
- * @return {Injector}
+ * @param {Injection|*} arguments The list of injections.
+ * @return {Injector} <code>this</code>.
  * @chainable
  */
 Injector.prototype.args = function args() {
@@ -628,8 +629,8 @@ Injector.prototype.args = function args() {
  * auto mode. In chain mode, call this function without arguments in order to retrieve the "return value" of the previous
  * function as <code>this</code> argument instead of as first argument. If the previous function "returns" multiple values
  * only the first one will be passed, the others are ignored.
- * @param {Injection|Object} object
- * @return {Injector}
+ * @param {Injection|Object} object The injection.
+ * @return {Injector} <code>this</code>
  * @chainable
  */
 Injector.prototype.this = function ths(object) {
@@ -646,8 +647,8 @@ Injector.prototype.this = function ths(object) {
  * attached directly to the function are prioritized.
  *
  * If an error occurs and no error handler has been registered the execution will break. So catch your errors!
- * @param {function(*)} errorHandler
- * @return {Injector}
+ * @param {function(*)} errorHandler The error handler, a function which accepts one argument.
+ * @return {Injector} <code>this</code>
  * @chainable
  */
 Injector.prototype.catch = function ctch(errorHandler) {
@@ -973,7 +974,7 @@ function createExecutor(injector) {
 /**
  * Starts the injection of values or dependencies into this function. Should be followed by one of the {@link Injector}
  * methods. Use <code>inject</code> to avoid function wrappers or things like {@link Function.prototype.bind}.
- * @return {Injector}
+ * @return {Injector} The injector.
  */
 function inject() {
   return new Injector(this);
