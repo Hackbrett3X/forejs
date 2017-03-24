@@ -39,7 +39,8 @@ fore.try({
   }],
 
   readme: generateReadme.inject.args(ref("code")),
-  writeReadme: fs.writeFile.inject.args(readmePath, ref("readme")),
+  readmeWithLicense: ["readme", "license", (readme, license) => [readme, "## License", license].join("\n\n")],
+  writeReadme: fs.writeFile.inject.args(readmePath, ref("readmeWithLicense")),
 
   _: ["write", "writeReadme", () => console.log("Build successful.")]
 }).catch(console.error);
