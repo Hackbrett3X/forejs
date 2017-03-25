@@ -3,7 +3,6 @@ const ref = fore.ref;
 const fs = require("fs");
 const path = require("path");
 const rimraf = require("rimraf");
-const fidUmd = new (require("fid-umd"))();
 const uglifyJs = require("uglify-js");
 
 const generateReadme = require("./generateReadme");
@@ -42,9 +41,9 @@ fore.try({
 
   minified: ["code", code => {
     code = replaceModuleExports("return $1;", code);
-    code = '// fid-umd {"name": "fore"}\n\n' + code;
-    code = fidUmd.update(code);
-    return uglifyJs.minify(code, uglifyOptions).code;
+    code = wrapWithUmdHeader(code, "forejs");
+    code =  uglifyJs.minify(code, uglifyOptions).code;
+    return code;
   }],
 
   browserVersion: ["license", "packageJson", "minified", prependHeaderComment],
@@ -78,4 +77,27 @@ function prependHeaderComment(license, packageJson, code) {
     ["/**", " foreJs", " @version " + packageJson.version, "/"].join("\n *"),
     code
   ].join("\n\n");
+}
+
+function wrapWithUmdHeader(code, name) {
+  return `
+"use strict";
+(function (r, n, f) {
+  function isObject(x) { return typeof x === "object"; }
+  try {
+    if (isObject(module) && isObject(module.exports)) {
+      return module.exports = f();
+    }
+  } catch (e) {}
+  if (isObject(r.exports)) {
+    r.exports[n] = f();
+  } else if (typeof r.define === "function" && r.define.amd) {
+    r.define(f);
+  } else {
+    r[n] = f();
+  }
+})(typeof global === "object" ? global : typeof window === "object" ? window : this, "${name}", function () {
+${code}
+});
+`
 }
