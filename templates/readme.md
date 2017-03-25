@@ -10,6 +10,8 @@ better performance.
 
 It is written in pure ECMAScript 5 and thus runs on older [node](https://nodejs.org) versions or the browser.
 Nonetheless modern features like promises, generators and ```Symbol.iterator``` are supported.
+
+<a name="usage"></a>
 ## Usage
 
 ```js
@@ -36,7 +38,109 @@ $ npm install --save forejs
 ```
 
 ## Examples
+#### Chain mode
+ForeJs provides two different run modes: "chain" and "auto". "Chain" mode executes the functions one after another, 
+"auto" mode allows a more complex structure (directed acyclic graphs). The example in the [Usage](#usage) paragraph
+showed the "auto" mode, so here is one in "chain" mode:
+```js
+fore(
+    // function that produces the value 1
+    one,
+    (one, callback) => {
+      setTimeout(() => callback(null, one + 1), 200);
+    },
+    // synchronous functions are supported:
+    two => two + 1,
+    // prints "3"
+    console.log
+);
+```
+#### Injections
+Sometimes it is necessary to provide constant values to functions in addition to the values provided by previous
+functions:
+```js
+const fs = require("fs");
+const ref = fore.ref;
 
+fore({
+  file: fs.readFile.inject.args("some/file", "utf-8"),
+  // in auto mode, dependencies are also injected  
+  modified: modify.inject.args(ref("file")),
+  // it is possible to write those as array:
+  customized: ["modified", modified => {
+    // customize file
+  }],
+  write: fs.writeFile.inject.args("out/file", ref("customized"))
+});
+```
+It is also possible to inject values or dependencies as ```this``` argument:
+```js
+someFunction.inject.this(ref("myObject"));
+```
+#### Catching errors
+Errors can be caught either directly at a single function:
+```js
+fore(
+    raisesError.inject.catch(error => /* handle error */)
+);
+```
+or generally:
+```js
+// don't forget the ".try"
+fore.try(
+    raisesError,
+).catch(error => /* handle error */);
+```
+#### Multiple return values
+Some functions like ```fs.read``` pass multiple values to the callback. In chain mode those are simply passed to the
+subsequent function:
+```js
+fore(
+    callback => callback(null, 1, 2, 3),
+    (one, two, three, callback) => two === 2
+);
+```
+In auto mode, those are condensed to an array (see why?):
+```js
+fore({
+  oneTwoThree: callback => callback(null, 1, 2, 3),
+  abc: callback => callback(null, "a", "b", "c"),
+  _: ["oneTwoThree", "abc", (oneTwoThree, abc, callback) => oneTwoThree[1] === 2 && abc[2] === "c"]
+});
+```
+#### Iteration
+The most powerful feature of foreJs is to asynchronously process iterables:
+```js
+const each = fore.each;
+const collect = fore.collect;
+fore(
+    each([1, 2, 3]), // can be an array or any form of iterable
+    // call this function for any of the above values
+    n => n + 1,
+    // combine the results to an array again
+    collect(numbers => {
+      // numbers contains now (not necessarily in this order):
+      // [2, 3, 4]
+    })
+);
+```
+Merge multiple iterables into one:
+```js
+const each = fore.each;
+const reduce = fore.reduce;
+fore({
+  ones: each([1, 2, 3]),
+  tens: each([10, 20, 30]),
+  // will be called for any combination of values:
+  combined: reduce(["ones", "tens", (array, ones, tens) => array.concat(ones + tens)], []),
+  _: ["combined", combined => {
+    // combined contains now those values (not necessarily in this order):
+    // [11, 12, 13, 21, 22, 23, 31, 32, 33]
+  }]
+});
+```
+
+For more examples have a look at the build and test files.
 ## Documentation
 {{>main-index~}}
 {{>all-docs~}}
