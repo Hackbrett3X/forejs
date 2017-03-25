@@ -2,6 +2,7 @@
   "name": "forejs",
   "version": "0.1.0",
   "description": "A lightweight module which provides powerful functionality to organize asynchronous JavaScript code.",
+  "keywords": ["async", "callback", "promise", "control-flow", "for-comprehension", "utility"],
   "main": "dist/forejs.js",
   "scripts": {
     "test": "mocha test/forejs-test.js",
