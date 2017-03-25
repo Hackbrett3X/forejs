@@ -15,6 +15,7 @@ const packagePath = "./package.json";
 const distPath = "./dist";
 const nodeName = "forejs.js";
 const browserName = "forejs.min.js";
+const es6Name = "forejs.es6.js";
 
 const readmePath = "README.md";
 
@@ -46,11 +47,17 @@ fore.try({
     return code;
   }],
 
+  es6export: ["code", code => replaceModuleExports("export default $1;", code)],
+
   browserVersion: ["license", "packageJson", "minified", prependHeaderComment],
+  es6Version: ["license", "packageJson", "es6export", prependHeaderComment],
   nodeVersion: ["license", "packageJson", "code", prependHeaderComment],
 
   writeBrowser: ["browserVersion", "distFolder", function (output, distFolder, cb) {
     fs.writeFile(path.join(distPath, browserName), output, cb);
+  }],
+  writeEs6: ["es6Version", "distFolder", function (output, distFolder, cb) {
+    fs.writeFile(path.join(distPath, es6Name), output, cb);
   }],
   writeNode: ["nodeVersion", "distFolder", function (output, distFolder, cb) {
     fs.writeFile(path.join(distPath, nodeName), output, cb);
@@ -60,7 +67,7 @@ fore.try({
   readmeWithLicense: ["readme", "license", (readme, license) => [readme, "## License", license].join("\n\n")],
   writeReadme: fs.writeFile.inject.args(readmePath, ref("readmeWithLicense")),
 
-  _: ["writeNode", "writeBrowser", "writeReadme", () => console.log("Build successful.")]
+  _: ["writeNode", "writeBrowser", "writeEs6", "writeReadme", () => console.log("Build successful.")]
 }).catch(console.error);
 
 function wrapWithMultilineComment(string) {
