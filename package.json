@@ -8,7 +8,7 @@
     "eslint": "./node_modules/.bin/eslint ./src",
     "benchmark": "node test/forejs-benchmark.js",
     "build": "node build.js",
-    "dist": "npm run eslint & npm run build & npm run test dist/forejs"
+    "dist": "npm run eslint & npm run build & npm run test dist/forejs & npm run test dist/forejs.min"
   },
   "author": {
     "name": "Lukas Holländer",
@@ -20,8 +20,10 @@
     "benchmark": "^2.1.3",
     "chai": "^3.5.0",
     "eslint": "^3.17.1",
+    "fid-umd": "^2.0.5",
     "jsdoc-to-markdown": "^3.0.0",
     "mocha": "^3.2.0",
-    "rimraf": "^2.6.1"
+    "rimraf": "^2.6.1",
+    "uglify-js": "^2.8.16"
   }
 }

@@ -1,5 +1,3 @@
-module.exports = fore;
-
 var symbolsSupported = typeof Symbol === "function" && typeof Symbol.iterator === "symbol";
 var arrayValuesSupported = typeof Array.prototype.values === "function";
 
@@ -1094,3 +1092,5 @@ Object.defineProperty(Function.prototype, "inject", {
   configurable: false,
   enumerable: false
 });
+
+module.exports = fore;
