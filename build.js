@@ -79,11 +79,15 @@ function replaceModuleExports(by, code) {
 }
 
 function prependHeaderComment(license, packageJson, code) {
-  return [
-    wrapWithMultilineComment(license),
-    ["/**", " foreJs", " @version " + packageJson.version, "/"].join("\n *"),
-    code
-  ].join("\n\n");
+  return `${wrapWithMultilineComment(license)}
+
+/**
+ * ${packageJson.description}
+ * @module foreJs
+ * @version ${packageJson.version}
+ */
+
+${code}`;
 }
 
 function wrapWithUmdHeader(code, name) {
