@@ -42,7 +42,7 @@ $ npm install --save forejs
 #### Chain mode
 ForeJs provides two different run modes: "chain" and "auto". Chain mode executes the functions one by one, 
 auto mode allows a more complex structure (directed acyclic graphs). The example in the <a href="#usage">Usage</a> paragraph
-shows the auto mode, so here a chain mode sample:
+shows the auto mode, so here is a chain mode sample:
 ```js
 fore(
     // function that produces the value 1
