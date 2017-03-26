@@ -23,7 +23,10 @@ module.exports = function generateReadme(code) {
       template: fs.readFile.inject.args(readmeTemplatePath, "utf-8"),
 
       render: ["filteredData", "template", (data, template) => jsdoc2md.render({data, template, "heading-depth": 3})],
-      _: ["render", resolve]
+
+      fixLinks: ["render", renderResult => renderResult.replace(/\[([^\]\n]+)]\(([^)\n]+)\)/g, '<a href="$2">$1</a>')],
+
+      _: ["fixLinks", resolve]
     }).catch(reject);
   });
 };
