@@ -12,6 +12,7 @@ It is written in pure ECMAScript 5 and thus runs on older <a href="https://nodej
 Nonetheless modern features like promises, generators and ```Symbol.iterator``` are supported.
 
 <a name="usage"></a>
+
 ## Usage
 
 ```js
