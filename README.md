@@ -39,9 +39,9 @@ $ npm install --save forejs
 
 ## Examples
 #### Chain mode
-ForeJs provides two different run modes: "chain" and "auto". "Chain" mode executes the functions one after another, 
-"auto" mode allows a more complex structure (directed acyclic graphs). The example in the [Usage](#usage) paragraph
-showed the "auto" mode, so here is one in "chain" mode:
+ForeJs provides two different run modes: "chain" and "auto". Chain mode executes the functions one by one, 
+auto mode allows a more complex structure (directed acyclic graphs). The example in the [Usage](#usage) paragraph
+shows the auto mode, so here a chain mode sample:
 ```js
 fore(
     // function that produces the value 1
@@ -66,7 +66,7 @@ fore({
   file: fs.readFile.inject.args("some/file", "utf-8"),
   // in auto mode, dependencies are also injected  
   modified: modify.inject.args(ref("file")),
-  // it is possible to write those as array:
+  // it is possible to write these as array:
   customized: ["modified", modified => {
     // customize file
   }],
@@ -140,7 +140,7 @@ fore({
 });
 ```
 
-For more examples have a look at the build and test files.
+For more examples take a look at the build and test files.
 ## Documentation
 ### Classes
 
@@ -156,10 +156,10 @@ For more examples have a look at the build and test files.
 <dd><p>The main entry point. Supports two modes:</p>
 <ul>
   <li>chain: In chain mode, <code>fore</code> accepts a list of functions that are executed sequentially.</li>
-  <li>auto: In auto mode, <code>fore</code> accepts an object where the keys are identifiers and the values are
-      functions. The identifiers can be referenced by other functions to retrieve its &quot;return value&quot; (see
-      <a href="#inject">inject</a> and <a href="#fore.ref">ref</a>). ForeJs now figures out the perfect execution order running as many code
-      in parallel as possible.</li>
+  <li>auto: In auto mode, <code>fore</code> accepts an object with identifiers as keys and functions as values. The
+      identifiers can be referenced by other functions to retrieve its &quot;return value&quot; (see <a href="#inject">inject</a> and
+      <a href="#fore.ref">ref</a>). ForeJs now figures out the perfect execution order and runs as much code in parallel as
+      possible.</li>
 </ul>
 
 <p>The functions passed may have one of the following forms:</p>
@@ -244,7 +244,7 @@ Attaches an error handler to this function that will be called if the function i
 <a name="fore"></a>
 
 ### fore(functions, arguments)
-The main entry point. Supports two modes:<ul>  <li>chain: In chain mode, <code>fore</code> accepts a list of functions that are executed sequentially.</li>  <li>auto: In auto mode, <code>fore</code> accepts an object where the keys are identifiers and the values are      functions. The identifiers can be referenced by other functions to retrieve its "return value" (see      [inject](#inject) and [ref](#fore.ref)). ForeJs now figures out the perfect execution order running as many code      in parallel as possible.</li></ul>The functions passed may have one of the following forms:<ul>  <li>Node-style asynchronous function: Accepts a number of arbitrary arguments followed by an error-first callback      function. The function must call this callback with either a non-null first argument to signal an error or      with null as first argument followed by any number of "return values".      In chain mode those "return values" are directly passed to the next function.      In auto mode those values are passed to all dependent functions. If more than one value is passed to the      callback, those values are passed as array to the dependents. Additionally all arguments but the last      (callback) must be eliminated by injections ([inject](#inject)).</li>  <li>Synchronous function: Sometimes you want to mix synchronous functions into asynchronous code. This is perfectly      ok: Simply put a plain <code>return</code> statement and ignore the callback. If you want to return      <code>undefined</code> on purpose you will need to invoke the callback, however.</li>  <li>Promise: Promises are supported, as well. Plain promises must be in a root position.</li>  <li>Promise returning function: A function may as well return a promise instead of invoking the callback.      Unfortunately the function will still get passed a callback as last argument. If your function cannot cope      with the extra argument, simply wrap it with another function.</li>  <li>Array: As shown in [Injector.prototype.args](Injector.prototype.args) injections can be syntactically sugared. If you are looking      for a way to iterate over arrays see [each](#fore.each).</li>  <li>Instances of [Injector](#Injector): An Injector is simply the wrapping type of injected functions.</li></ul>
+The main entry point. Supports two modes:<ul>  <li>chain: In chain mode, <code>fore</code> accepts a list of functions that are executed sequentially.</li>  <li>auto: In auto mode, <code>fore</code> accepts an object with identifiers as keys and functions as values. The      identifiers can be referenced by other functions to retrieve its "return value" (see [inject](#inject) and      [ref](#fore.ref)). ForeJs now figures out the perfect execution order and runs as much code in parallel as      possible.</li></ul>The functions passed may have one of the following forms:<ul>  <li>Node-style asynchronous function: Accepts a number of arbitrary arguments followed by an error-first callback      function. The function must call this callback with either a non-null first argument to signal an error or      with null as first argument followed by any number of "return values".      In chain mode those "return values" are directly passed to the next function.      In auto mode those values are passed to all dependent functions. If more than one value is passed to the      callback, those values are passed as array to the dependents. Additionally all arguments but the last      (callback) must be eliminated by injections ([inject](#inject)).</li>  <li>Synchronous function: Sometimes you want to mix synchronous functions into asynchronous code. This is perfectly      ok: Simply put a plain <code>return</code> statement and ignore the callback. If you want to return      <code>undefined</code> on purpose you will need to invoke the callback, however.</li>  <li>Promise: Promises are supported, as well. Plain promises must be in a root position.</li>  <li>Promise returning function: A function may as well return a promise instead of invoking the callback.      Unfortunately the function will still get passed a callback as last argument. If your function cannot cope      with the extra argument, simply wrap it with another function.</li>  <li>Array: As shown in [Injector.prototype.args](Injector.prototype.args) injections can be syntactically sugared. If you are looking      for a way to iterate over arrays see [each](#fore.each).</li>  <li>Instances of [Injector](#Injector): An Injector is simply the wrapping type of injected functions.</li></ul>
 
 **Kind**: global function  
 

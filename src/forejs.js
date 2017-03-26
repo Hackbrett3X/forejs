@@ -82,10 +82,10 @@ function id(arg) {
  * The main entry point. Supports two modes:
  * <ul>
  *   <li>chain: In chain mode, <code>fore</code> accepts a list of functions that are executed sequentially.</li>
- *   <li>auto: In auto mode, <code>fore</code> accepts an object where the keys are identifiers and the values are
- *       functions. The identifiers can be referenced by other functions to retrieve its "return value" (see
- *       {@link inject} and {@link fore.ref}). ForeJs now figures out the perfect execution order running as many code
- *       in parallel as possible.</li>
+ *   <li>auto: In auto mode, <code>fore</code> accepts an object with identifiers as keys and functions as values. The
+ *       identifiers can be referenced by other functions to retrieve its "return value" (see {@link inject} and
+ *       {@link fore.ref}). ForeJs now figures out the perfect execution order and runs as much code in parallel as
+ *       possible.</li>
  * </ul>
  *
  * The functions passed may have one of the following forms:

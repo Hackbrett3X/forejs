@@ -39,9 +39,9 @@ $ npm install --save forejs
 
 ## Examples
 #### Chain mode
-ForeJs provides two different run modes: "chain" and "auto". "Chain" mode executes the functions one after another, 
-"auto" mode allows a more complex structure (directed acyclic graphs). The example in the [Usage](#usage) paragraph
-showed the "auto" mode, so here is one in "chain" mode:
+ForeJs provides two different run modes: "chain" and "auto". Chain mode executes the functions one by one, 
+auto mode allows a more complex structure (directed acyclic graphs). The example in the [Usage](#usage) paragraph
+shows the auto mode, so here a chain mode sample:
 ```js
 fore(
     // function that produces the value 1
@@ -66,7 +66,7 @@ fore({
   file: fs.readFile.inject.args("some/file", "utf-8"),
   // in auto mode, dependencies are also injected  
   modified: modify.inject.args(ref("file")),
-  // it is possible to write those as array:
+  // it is possible to write these as array:
   customized: ["modified", modified => {
     // customize file
   }],
@@ -140,7 +140,7 @@ fore({
 });
 ```
 
-For more examples have a look at the build and test files.
+For more examples take a look at the build and test files.
 ## Documentation
 {{>main-index~}}
 {{>all-docs~}}
