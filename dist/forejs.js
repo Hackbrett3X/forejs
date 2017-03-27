@@ -23,7 +23,7 @@ SOFTWARE.
 /**
  * A lightweight module which provides powerful functionality to organize asynchronous JavaScript code.
  * @module foreJs
- * @version 0.6.2
+ * @version 0.6.3
  */
 
 var symbolsSupported = typeof Symbol === "function" && typeof Symbol.iterator === "symbol";
