@@ -17,7 +17,9 @@
     "eslint": "./node_modules/.bin/eslint ./src",
     "benchmark": "node test/forejs-benchmark.js",
     "build": "node build.js",
-    "dist": "npm run eslint & npm run build & npm run test dist/forejs & npm run test dist/forejs.min"
+    "dist": "npm run eslint && npm run build && npm run test dist/forejs && npm run test dist/forejs.min",
+    "version": "npm run dist && git add -A",
+    "postversion": "git push && git push --tags"
   },
   "author": {
     "name": "Lukas Holländer",
