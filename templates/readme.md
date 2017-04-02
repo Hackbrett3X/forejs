@@ -31,12 +31,14 @@ fore({
 });
 ```
 
-See below for documentation and more examples.
+See below for [documentation](#documentation) and more [examples](#examples).
 
 ## Installation
 ```
 $ npm install --save forejs
 ```
+
+<a name="examples"></a>
 
 ## Examples
 #### Chain mode
@@ -142,6 +144,9 @@ fore({
 ```
 
 For more examples take a look at the build and test files.
+
+<a name="documentation"></a>
+
 ## Documentation
 {{>main-index~}}
 {{>all-docs~}}
