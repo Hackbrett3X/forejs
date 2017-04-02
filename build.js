@@ -37,8 +37,7 @@ fore.try({
 
   code: fs.readFile.inject.args(path.join(srcPath, srcName), encoding),
   license: fs.readFile.inject.args(licensePath, encoding),
-  packageJsonFile: fs.readFile.inject.args(packagePath, encoding),
-  packageJson: ["packageJsonFile", (packageJsonFile) => JSON.parse(packageJsonFile)],
+  packageJson: [cb => fs.readFile(packagePath, encoding, cb), file => JSON.parse(file)],
 
   minified: ["code", code => {
     code = replaceModuleExports("return $1;", code);
