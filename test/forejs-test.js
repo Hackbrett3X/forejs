@@ -36,7 +36,7 @@ function error(error, callback) {
 
 describe("General functionality", function () {
 
-  describe("Simple chaining/inject", function () {
+  describe("Chain mode/inject", function () {
     it("one - inject with 0 arguments", function (done) {
       fore(
           one,
@@ -81,7 +81,7 @@ describe("General functionality", function () {
   });
 
   describe("This injections", function () {
-    it("simple chain", function (done) {
+    it("Chain mode", function (done) {
       fore(
           function (callback) {
             callback(null, "abc")
@@ -94,7 +94,7 @@ describe("General functionality", function () {
       )
     });
 
-    it("dependencies", function (done) {
+    it("Auto mode", function (done) {
       fore({
         str: function (callback) {
           callback(null, "abc")
@@ -107,7 +107,7 @@ describe("General functionality", function () {
       })
     });
 
-    it("dependencies - combined with args", function (done) {
+    it("Auto mode - combined with args", function (done) {
       fore({
         str: function (callback) {
           callback(null, "abc")
@@ -146,7 +146,7 @@ describe("General functionality", function () {
       );
     });
 
-    it("catch - with dependencies", function (done) {
+    it("catch - auto mode", function (done) {
       fore({
         msg: function (callback) {
           callback(null, "msg")
@@ -194,7 +194,7 @@ describe("General functionality", function () {
       })
     });
 
-    it("general catch - with dependencies", function (done) {
+    it("general catch - auto mode", function (done) {
       fore.try({
         msg: function (callback) {
           callback(null, "msg")
@@ -274,7 +274,7 @@ describe("General functionality", function () {
       return n + m;
     }
 
-    it("waterfall", function (done) {
+    it("Chain mode", function (done) {
       fore(
           oneSync,
           plusOneSync,
@@ -287,7 +287,7 @@ describe("General functionality", function () {
       );
     });
 
-    it("Dependencies", function (done) {
+    it("Auto mode", function (done) {
       fore({
         one: oneSync,
         two: ["one", plusOneSync],
@@ -302,7 +302,7 @@ describe("General functionality", function () {
   });
 
   describe("nesting", function () {
-    it("waterfall", function (done) {
+    it("Chain mode", function (done) {
       fore(
           one,
           function (one, callback) {
@@ -326,7 +326,7 @@ describe("General functionality", function () {
       )
     });
 
-    it("dependencies", function (done) {
+    it("Auto mode", function (done) {
       fore({
         one: one,
         three: ["one", function (one, callback) {
@@ -350,7 +350,7 @@ describe("General functionality", function () {
   });
 
   describe("multiple 'return values'", function () {
-    it("waterfall", function (done) {
+    it("Chain mode", function (done) {
       fore(
           function (callback) {
             callback(null, 1, 2, 3);
@@ -365,7 +365,7 @@ describe("General functionality", function () {
       )
     });
 
-    it("waterfall and this injection", function (done) {
+    it("Chain mode and this injection", function (done) {
       fore(
           function (callback) {
             callback(null, "a", "b", "c")
@@ -378,7 +378,7 @@ describe("General functionality", function () {
       )
     });
 
-    it("auto", function (done) {
+    it("Auto mode", function (done) {
       fore({
         oneTwoThree: function (callback) {
           callback(null, 1, 2, 3);
@@ -442,7 +442,7 @@ describe("Promise support", function () {
     });
   }
 
-  describe("simple chain", function () {
+  describe("Chain mode", function () {
     it("one", function (done) {
       fore(
           promiseOne,
@@ -477,7 +477,7 @@ describe("Promise support", function () {
     });
   });
 
-  describe("Dependencies", function () {
+  describe("Auto mode", function () {
     it("one", function (done) {
       fore({
         one: promiseOne,
@@ -526,7 +526,7 @@ describe("Promise support", function () {
       )
     });
 
-    it("Dependencies", function (done) {
+    it("Auto mode", function (done) {
       fore({
         err: promiseError.inject.args("msg").catch(function (err) {
           expect(err).to.equal("msg");
@@ -554,7 +554,7 @@ describe("Promise support", function () {
   });
 
   describe("direct promises", function () {
-    it("waterfall", function (done) {
+    it("Chain mode", function (done) {
       fore(
           promiseOne(),
           function (one) {
@@ -564,7 +564,7 @@ describe("Promise support", function () {
       )
     });
 
-    it("Complex", function (done) {
+    it("Auto mode", function (done) {
       fore({
         one: promiseOne(),
         _: ["one", function (one) {
@@ -578,7 +578,7 @@ describe("Promise support", function () {
 });
 
 describe("syntactic sugar: injections as array", function () {
-  it("simple chain", function (done) {
+  it("Chain mode", function (done) {
     fore(
         one,
         [1, plus],
@@ -644,7 +644,7 @@ describe("each", function () {
   }
 
 
-  describe("Simple chain", function () {
+  describe("Chain mode", function () {
     it("array", function (done) {
       fore(
           fore.each([1, 2, 3]),
@@ -786,7 +786,7 @@ describe("each", function () {
       yield Promise.resolve(3);
     }
 
-    it("Waterfall", function (done) {
+    it("Chain mode", function (done) {
       fore(
           fore.each(oneTwoThreePromise),
           (function () {
@@ -878,7 +878,7 @@ describe("each", function () {
 });
 
 describe("collect", function () {
-  describe("waterfall", function () {
+  describe("Chain mode", function () {
     it("1-dimensional", function (done) {
       fore(
           fore.each([1, 2, 3]),
@@ -905,7 +905,7 @@ describe("collect", function () {
     });
   });
 
-  describe("dependencies", function () {
+  describe("Auto mode", function () {
     it("1-dimensional", function (done) {
       fore({
         "ones": fore.each([1, 2, 3]),
@@ -938,7 +938,7 @@ describe("collect", function () {
 });
 
 describe("reduce", function () {
-  describe("waterfall", function () {
+  describe("Chain mode", function () {
     it("1-dimensional", function (done) {
       fore(
           fore.each([1, 2, 3]),
@@ -954,7 +954,7 @@ describe("reduce", function () {
     });
   });
 
-  describe("dependencies", function () {
+  describe("Auto mode", function () {
     it("1-dimensional", function (done) {
       fore({
         "ones": fore.each([1, 2, 3]),
