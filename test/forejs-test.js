@@ -636,6 +636,40 @@ describe("syntactic sugar: injections as array", function () {
       done();
     });
   });
+
+  describe("Multiple functions", function () {
+    it("Without injections", function (done) {
+      fore({
+        two: [one, plusOne],
+        _: ["two", function (two) {
+          expect(two).equal(2);
+          done();
+        }]
+      });
+    });
+
+    it("With injections", function (done) {
+      fore({
+        one: one,
+        three: ["one", plusOne, plusOne],
+        _: ["three", function (three) {
+          expect(three).equal(3);
+          done();
+        }]
+      });
+    });
+
+    it("With (nested) injections", function (done) {
+      fore({
+        one: one,
+        three: ["one", plusOne, plus.inject.args(1)],
+        _: ["three", function (three) {
+          expect(three).equal(3);
+          done();
+        }]
+      });
+    });
+  });
 });
 
 describe("each", function () {

@@ -420,13 +420,43 @@ function handleError(injector, err) {
 function desugar(fn) {
   if (Array.isArray(fn)) {
     // desugar ["a", "b", function (a, b) {...}]
-    var injector = fn[fn.length - 1].inject;
-    var i = -1, length = fn.length - 1;
-    var injections = injector.injections = new Array(length);
-    while (++i < length) {
-      var arg = fn[i];
-      injections[i] = typeof arg === "string" ? fore.ref(arg) : arg;
+    var functions = [];
+    var injections = [];
+    for (var i = -1, length = fn.length; ++i < length;) {
+      const item = fn[i];
+      if (typeof item === "function" || item instanceof Injector) {
+        functions.push(item);
+      } else {
+        injections.push(typeof item === "string" ? fore.ref(item) : item);
+      }
     }
+
+    var theFunction;
+    if (functions.length === 1) {
+      theFunction = functions[0];
+    } else {
+       theFunction = function () {
+        var lastIndex = arguments.length - 1;
+
+        // inject values from "outer" fore into first function of "inner" fore
+        var injector = new Injector(functions[0]);
+        var injections = injector.injections = new Array(lastIndex);
+        for (var j = -1; ++j < lastIndex;) {
+          injections[j] = arguments[j];
+        }
+        functions[0] = injector;
+
+        // append "outer" callback as last function
+        var callback = arguments[lastIndex];
+        functions.push(function (result) {
+          callback(null, result);
+        });
+        simpleChain(functions);
+      };
+    }
+    
+    var injector = new Injector(theFunction);
+    injector.injections = injections;
     return injector;
   }
 
