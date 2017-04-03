@@ -194,13 +194,23 @@ function createValueProviderFromInjection(valuePipes, combinator, injection, has
   if (injection instanceof Injection) {
     hasInjections[0] = true;
 
-    var valuePipe = valuePipes[injection.id];
-    if (!valuePipe) {
-      throw new Error("Unbound identifier '" + injection.id + "'.");
+    var id = injection.id;
+    var valuePipe;
+    if (id.indexOf("|") >= 0) {
+      // "or injections" ( ref("a|b") )
+      valuePipe = new DemuxValuePipe(combinator);
+
+      var ids = id.split("|");
+      valuePipe.inputPipes = map(ids, function (id) {
+        var inputValuePipe = getValuePipe(valuePipes, id);
+        inputValuePipe.register(valuePipe);
+        return inputValuePipe;
+      });
+    } else {
+      valuePipe = getValuePipe(valuePipes, id);
+      valuePipe.register(combinator);
     }
 
-    // TODO: replace push
-    valuePipe.register(combinator);
     combinator.valuePipes.push(valuePipe);
     combinator.valueProviders.push(valueProvider);
   } else {
@@ -208,6 +218,19 @@ function createValueProviderFromInjection(valuePipes, combinator, injection, has
   }
 
   return valueProvider;
+}
+
+/**
+ * @param {Object.<String, ValuePipe>} valuePipes
+ * @param {String} id
+ * @return {ValuePipe}
+ */
+function getValuePipe(valuePipes, id) {
+  var valuePipe = valuePipes[id];
+  if (!valuePipe) {
+    throw new Error("Unbound identifier '" + id + "'.");
+  }
+  return valuePipe;
 }
 
 /**
@@ -494,7 +517,7 @@ function ValuePipe() {
 }
 
 /**
- * @param {Combinator} observer
+ * @param {Combinator|DemuxValuePipe} observer
  */
 ValuePipe.prototype.register = function (observer) {
   if (this.observers.indexOf(observer) < 0) {
@@ -541,7 +564,36 @@ ValuePipe.prototype.updateDone = function (done, expectedLength) {
   this.done = this.reachedLast && this.values.length === this.expectedLength - this.failedLength;
 };
 
+/**
+ * This is neither a real {@link ValuePipe} nor a real {@link Combinator}. It de-multiplexes several ValuePipes to one
+ * Combinator input.
+ * @param {Combinator} combinator
+ * @constructor
+ */
+function DemuxValuePipe(combinator) {
+  this.values = [];
 
+  this.combinator = combinator;
+  this.inputPipes = null;
+  this.done = false;
+}
+
+DemuxValuePipe.prototype.notify = function (sender) {
+  var senderValues = sender.values;
+  this.values.push(senderValues[senderValues.length - 1]);
+
+  this.updateDone();
+  this.combinator.notify(this);
+};
+
+DemuxValuePipe.prototype.notifyFailure = function (sender) {
+  this.updateDone();
+  this.combinator.notifyFailure(this);
+};
+
+DemuxValuePipe.prototype.updateDone = function () {
+  this.done = every(this.inputPipes, function (valuePipe) { return valuePipe.done });
+};
 
 /**
  * @constructor
@@ -556,14 +608,14 @@ function Combinator() {
   this.valueProviders = [];
 }
 /**
- * @param {ValuePipe} sender
+ * @param {ValuePipe|DemuxValuePipe} sender
  * @abstract
  */
 Combinator.prototype.notify = function (sender) {
 };
 
 /**
- * @param {ValuePipe} sender
+ * @param {ValuePipe|DemuxValuePipe} sender
  */
 Combinator.prototype.notifyFailure = function (sender) {
 };

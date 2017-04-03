@@ -1026,3 +1026,72 @@ describe("reduce", function () {
     });
   });
 });
+
+describe("Or-injections", function () {
+  it("Simple", function (done) {
+    let received = [];
+    fore({
+      a: () => "a",
+      b: () => "b",
+      _: ["a|b", function (aOrB) {
+        if (received.indexOf(aOrB) >= 0) {
+          expect.fail();
+          return done();
+        } else {
+          received.push(aOrB);
+        }
+
+        if (received.length === 2) {
+          expect(received).to.have.members(["a", "b"]);
+          done();
+        }
+      }]
+    });
+  });
+
+  it("This injection", function (done) {
+    let received = [];
+    fore({
+      a: () => "a",
+      b: () => "b",
+      _: (function () {
+        if (received.indexOf(this) >= 0) {
+          expect.fail();
+          return done();
+        } else {
+          received.push(this + ""); // somehow the test framework thinks "this" is {0: "a"} instead of just "a"
+        }
+
+        if (received.length === 2) {
+          expect(received).to.have.members(["a", "b"]);
+          done();
+        }
+      }).inject.this(fore.ref("a|b"))
+    });
+  });
+
+  it("each/collect", function (done) {
+    fore({
+      ab: fore.each(["a", "b"]),
+      c: () => "c",
+      abDelayed: ["ab", delay],
+      cDelayed: ["c", delay],
+      _: fore.collect(["abDelayed|cDelayed", function (chars) {
+          expect(chars).to.have.members(["a", "b", "c"]);
+          done();
+      }])
+    });
+  });
+
+  it("each/reduce", function (done) {
+    fore({
+      ab: fore.each(["a", "b"]),
+      c: () => "c",
+      chars: fore.reduce(["ab|c", (array, char) => array.concat(char)], []),
+      _: ["chars", function (chars) {
+        expect(chars).to.have.members(["a", "b", "c"]);
+        done();
+      }]
+    });
+  });
+});
