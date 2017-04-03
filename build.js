@@ -1,5 +1,6 @@
 const fore = require("./src/forejs");
 const ref = fore.ref;
+const collect = fore.collect;
 const fs = require("fs");
 const path = require("path");
 const rimraf = require("rimraf");
@@ -39,34 +40,29 @@ fore.try({
   license: fs.readFile.inject.args(licensePath, encoding),
   packageJson: [cb => fs.readFile(packagePath, encoding, cb), file => JSON.parse(file)],
 
-  minified: ["code", code => {
+  browserVersion: ["code", code => {
     code = replaceModuleExports("return $1;", code);
     code = wrapWithUmdHeader(code, "forejs");
     code =  uglifyJs.minify(code, uglifyOptions).code;
-    return code;
+    return {code, outPath: path.join(distPath, browserName)};
+  }],
+  es6Version: ["code", code => {
+    return {code: replaceModuleExports("export default $1;", code), outPath: path.join(distPath, es6Name)}
+  }],
+  nodeVersion: ["code", code => {return {code, outPath: path.join(distPath, nodeName)}}],
+
+  header: ["browserVersion|es6Version|nodeVersion", "license", "packageJson", (file, license, packageJson) => {
+    file.code = prependHeaderComment(license, packageJson, file.code);
+    return file;
   }],
 
-  es6export: ["code", code => replaceModuleExports("export default $1;", code)],
-
-  browserVersion: ["license", "packageJson", "minified", prependHeaderComment],
-  es6Version: ["license", "packageJson", "es6export", prependHeaderComment],
-  nodeVersion: ["license", "packageJson", "code", prependHeaderComment],
-
-  writeBrowser: ["browserVersion", "distFolder", function (output, distFolder, cb) {
-    fs.writeFile(path.join(distPath, browserName), output, cb);
-  }],
-  writeEs6: ["es6Version", "distFolder", function (output, distFolder, cb) {
-    fs.writeFile(path.join(distPath, es6Name), output, cb);
-  }],
-  writeNode: ["nodeVersion", "distFolder", function (output, distFolder, cb) {
-    fs.writeFile(path.join(distPath, nodeName), output, cb);
-  }],
+  write: ["header", "distFolder", (file, _, cb) => fs.writeFile(file.outPath, file.code, cb)],
 
   readme: generateReadme.inject.args(ref("code")),
   readmeWithLicense: ["readme", "license", (readme, license) => [readme, "## License", license].join("\n\n")],
   writeReadme: fs.writeFile.inject.args(readmePath, ref("readmeWithLicense")),
 
-  _: ["writeNode", "writeBrowser", "writeEs6", "writeReadme", () => console.log("Build successful.")]
+  _: collect(["write", "writeReadme", () => console.log("Build successful.")])
 }).catch(console.error);
 
 function wrapWithMultilineComment(string) {
