@@ -423,7 +423,7 @@ function desugar(fn) {
     var functions = [];
     var injections = [];
     for (var i = -1, length = fn.length; ++i < length;) {
-      const item = fn[i];
+      var item = fn[i];
       if (typeof item === "function" || item instanceof Injector) {
         functions.push(item);
       } else {
