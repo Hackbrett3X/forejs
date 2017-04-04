@@ -1168,11 +1168,58 @@ function inject() {
   return new Injector(this);
 }
 
+/**
+ * @param {function} fn
+ * @return {Injector}
+ */
+function foreInject(fn) {
+  return inject.call(fn);
+}
+
 // add inject to Function prototype
-Object.defineProperty(Function.prototype, "inject", {
-  get: inject,
-  configurable: false,
-  enumerable: false
-});
+function attachInject() {
+  Object.defineProperty(Function.prototype, "inject", {
+    get: inject,
+    configurable: true,
+    enumerable: false
+  });
+}
+
+/**
+ * Configures foreJs.
+ * @param {object=} properties The configuration object.
+ * @param {boolean=} properties.dontHackFunctionPrototype Set <code>true</code> to keep <code>Function.prototype</code>
+ *   clean and omit the {@link inject} getter. {@link inject} now exists as static property of {@link fore} instead:
+ *   <code>fore.inject(myFunction).args(...)</code>. Default: <code>false</code>
+ */
+fore.config = function (properties) {
+  var config = new Config(properties);
+
+  if (config.dontHackFunctionPrototype) {
+    if (Object.getOwnPropertyDescriptor(Function.prototype, "inject").get === inject) {
+      delete Function.prototype.inject;
+    }
+    fore.inject = foreInject;
+  } else {
+    if (typeof fore.inject === "function") {
+      delete fore.inject;
+    }
+    attachInject();
+  }
+};
+
+/**
+ * @param {Object} config
+ * @constructor
+ * @property {boolean} dontHackFunctionPrototype
+ */
+function Config(config) {
+  config && each(Object.getOwnPropertyNames(config), function (name) {
+    this[name] = config[name];
+  }.bind(this));
+}
+Config.prototype.dontHackFunctionPrototype = false;
+
+fore.config();
 
 module.exports = fore;

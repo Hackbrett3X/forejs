@@ -1095,3 +1095,23 @@ describe("Or-injections", function () {
     });
   });
 });
+
+describe("config", function () {
+  it("dontHackFunctionPrototype", function (done) {
+    expect(Object.getOwnPropertyDescriptor(Function.prototype, "inject").get).to.be.a("function");
+    fore.config({dontHackFunctionPrototype: true});
+    expect(Function.prototype.inject).to.be.a("undefined");
+    expect(fore.inject).to.be.a("function");
+
+    fore(
+        one,
+        fore.inject(plus).args(1),
+        two => {
+          expect(two).equal(2);
+          fore.config({dontHackFunctionPrototype: false});
+          expect(Object.getOwnPropertyDescriptor(Function.prototype, "inject").get).to.be.a("function");
+          done();
+        }
+    )
+  });
+});
