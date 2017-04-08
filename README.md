@@ -1,10 +1,10 @@
 # foreJs
 
-<a href="https://img.shields.io/npm/v/forejs.svg">![npm version</a>](https://www.npmjs.com/package/forejs)
-<a href="https://img.shields.io/bower/v/forejs.svg">![bower version</a>](https://github.com/Hackbrett3X/forejs)
-<a href="https://img.shields.io/badge/examples-forejs-brightgreen.svg">![examples</a>](https://github.com/Hackbrett3X/forejs#examples)
-<a href="https://img.shields.io/badge/documentation-v0.7.x-blue.svg">![documentation</a>](https://github.com/Hackbrett3X/forejs#examples)
-<a href="https://img.shields.io/badge/what's%20new-v0.7.x-orange.svg">![What's new</a>](https://github.com/Hackbrett3X/forejs/blob/master/WHATSNEW.md)
+[![npm version](https://img.shields.io/npm/v/forejs.svg)](https://www.npmjs.com/package/forejs)
+[![bower version](https://img.shields.io/bower/v/forejs.svg)](https://github.com/Hackbrett3X/forejs)
+[![examples](https://img.shields.io/badge/examples-forejs-brightgreen.svg)](https://github.com/Hackbrett3X/forejs#examples)
+[![documentation](https://img.shields.io/badge/documentation-v0.7.x-blue.svg)](https://github.com/Hackbrett3X/forejs#examples)
+[![What's new](https://img.shields.io/badge/what's%20new-v0.7.x-orange.svg)](https://github.com/Hackbrett3X/forejs/blob/master/WHATSNEW.md)
 
 
 ForeJs is a lightweight but powerful module which provides rich functionality to organize asynchronous JavaScript code.
