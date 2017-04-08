@@ -23,7 +23,7 @@ SOFTWARE.
 /**
  * A lightweight module which provides powerful functionality to organize asynchronous JavaScript code.
  * @module foreJs
- * @version 0.6.3
+ * @version 0.7.0
  */
 
 var symbolsSupported = typeof Symbol === "function" && typeof Symbol.iterator === "symbol";
@@ -222,13 +222,23 @@ function createValueProviderFromInjection(valuePipes, combinator, injection, has
   if (injection instanceof Injection) {
     hasInjections[0] = true;
 
-    var valuePipe = valuePipes[injection.id];
-    if (!valuePipe) {
-      throw new Error("Unbound identifier '" + injection.id + "'.");
+    var id = injection.id;
+    var valuePipe;
+    if (id.indexOf("|") >= 0) {
+      // "or injections" ( ref("a|b") )
+      valuePipe = new DemuxValuePipe(combinator);
+
+      var ids = id.split("|");
+      valuePipe.inputPipes = map(ids, function (id) {
+        var inputValuePipe = getValuePipe(valuePipes, id);
+        inputValuePipe.register(valuePipe);
+        return inputValuePipe;
+      });
+    } else {
+      valuePipe = getValuePipe(valuePipes, id);
+      valuePipe.register(combinator);
     }
 
-    // TODO: replace push
-    valuePipe.register(combinator);
     combinator.valuePipes.push(valuePipe);
     combinator.valueProviders.push(valueProvider);
   } else {
@@ -236,6 +246,19 @@ function createValueProviderFromInjection(valuePipes, combinator, injection, has
   }
 
   return valueProvider;
+}
+
+/**
+ * @param {Object.<String, ValuePipe>} valuePipes
+ * @param {String} id
+ * @return {ValuePipe}
+ */
+function getValuePipe(valuePipes, id) {
+  var valuePipe = valuePipes[id];
+  if (!valuePipe) {
+    throw new Error("Unbound identifier '" + id + "'.");
+  }
+  return valuePipe;
 }
 
 /**
@@ -448,13 +471,43 @@ function handleError(injector, err) {
 function desugar(fn) {
   if (Array.isArray(fn)) {
     // desugar ["a", "b", function (a, b) {...}]
-    var injector = fn[fn.length - 1].inject;
-    var i = -1, length = fn.length - 1;
-    var injections = injector.injections = new Array(length);
-    while (++i < length) {
-      var arg = fn[i];
-      injections[i] = typeof arg === "string" ? fore.ref(arg) : arg;
+    var functions = [];
+    var injections = [];
+    for (var i = -1, length = fn.length; ++i < length;) {
+      var item = fn[i];
+      if (typeof item === "function" || item instanceof Injector) {
+        functions.push(item);
+      } else {
+        injections.push(typeof item === "string" ? fore.ref(item) : item);
+      }
     }
+
+    var theFunction;
+    if (functions.length === 1) {
+      theFunction = functions[0];
+    } else {
+       theFunction = function () {
+        var lastIndex = arguments.length - 1;
+
+        // inject values from "outer" fore into first function of "inner" fore
+        var injector = new Injector(functions[0]);
+        var injections = injector.injections = new Array(lastIndex);
+        for (var j = -1; ++j < lastIndex;) {
+          injections[j] = arguments[j];
+        }
+        functions[0] = injector;
+
+        // append "outer" callback as last function
+        var callback = arguments[lastIndex];
+        functions.push(function (result) {
+          callback(null, result);
+        });
+        simpleChain(functions);
+      };
+    }
+    
+    var injector = new Injector(theFunction);
+    injector.injections = injections;
     return injector;
   }
 
@@ -492,7 +545,7 @@ function ValuePipe() {
 }
 
 /**
- * @param {Combinator} observer
+ * @param {Combinator|DemuxValuePipe} observer
  */
 ValuePipe.prototype.register = function (observer) {
   if (this.observers.indexOf(observer) < 0) {
@@ -539,7 +592,36 @@ ValuePipe.prototype.updateDone = function (done, expectedLength) {
   this.done = this.reachedLast && this.values.length === this.expectedLength - this.failedLength;
 };
 
+/**
+ * This is neither a real {@link ValuePipe} nor a real {@link Combinator}. It de-multiplexes several ValuePipes to one
+ * Combinator input.
+ * @param {Combinator} combinator
+ * @constructor
+ */
+function DemuxValuePipe(combinator) {
+  this.values = [];
 
+  this.combinator = combinator;
+  this.inputPipes = null;
+  this.done = false;
+}
+
+DemuxValuePipe.prototype.notify = function (sender) {
+  var senderValues = sender.values;
+  this.values.push(senderValues[senderValues.length - 1]);
+
+  this.updateDone();
+  this.combinator.notify(this);
+};
+
+DemuxValuePipe.prototype.notifyFailure = function (sender) {
+  this.updateDone();
+  this.combinator.notifyFailure(this);
+};
+
+DemuxValuePipe.prototype.updateDone = function () {
+  this.done = every(this.inputPipes, function (valuePipe) { return valuePipe.done });
+};
 
 /**
  * @constructor
@@ -554,14 +636,14 @@ function Combinator() {
   this.valueProviders = [];
 }
 /**
- * @param {ValuePipe} sender
+ * @param {ValuePipe|DemuxValuePipe} sender
  * @abstract
  */
 Combinator.prototype.notify = function (sender) {
 };
 
 /**
- * @param {ValuePipe} sender
+ * @param {ValuePipe|DemuxValuePipe} sender
  */
 Combinator.prototype.notifyFailure = function (sender) {
 };
@@ -1114,11 +1196,58 @@ function inject() {
   return new Injector(this);
 }
 
+/**
+ * @param {function} fn
+ * @return {Injector}
+ */
+function foreInject(fn) {
+  return inject.call(fn);
+}
+
 // add inject to Function prototype
-Object.defineProperty(Function.prototype, "inject", {
-  get: inject,
-  configurable: false,
-  enumerable: false
-});
+function attachInject() {
+  Object.defineProperty(Function.prototype, "inject", {
+    get: inject,
+    configurable: true,
+    enumerable: false
+  });
+}
+
+/**
+ * Configures foreJs.
+ * @param {object=} properties The configuration object.
+ * @param {boolean=} properties.dontHackFunctionPrototype Set <code>true</code> to keep <code>Function.prototype</code>
+ *   clean and omit the {@link inject} getter. {@link inject} now exists as static property of {@link fore} instead:
+ *   <code>fore.inject(myFunction).args(...)</code>. Default: <code>false</code>
+ */
+fore.config = function (properties) {
+  var config = new Config(properties);
+
+  if (config.dontHackFunctionPrototype) {
+    if (Object.getOwnPropertyDescriptor(Function.prototype, "inject").get === inject) {
+      delete Function.prototype.inject;
+    }
+    fore.inject = foreInject;
+  } else {
+    if (typeof fore.inject === "function") {
+      delete fore.inject;
+    }
+    attachInject();
+  }
+};
+
+/**
+ * @param {Object} config
+ * @constructor
+ * @property {boolean} dontHackFunctionPrototype
+ */
+function Config(config) {
+  config && each(Object.getOwnPropertyNames(config), function (name) {
+    this[name] = config[name];
+  }.bind(this));
+}
+Config.prototype.dontHackFunctionPrototype = false;
+
+fore.config();
 
 export default fore;

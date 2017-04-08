@@ -1,4 +1,12 @@
 # foreJs
+
+<a href="https://img.shields.io/npm/v/forejs.svg">![npm version</a>](https://www.npmjs.com/package/forejs)
+<a href="https://img.shields.io/bower/v/forejs.svg">![bower version</a>](https://github.com/Hackbrett3X/forejs)
+<a href="https://img.shields.io/badge/examples-forejs-brightgreen.svg">![examples</a>](https://github.com/Hackbrett3X/forejs#examples)
+<a href="https://img.shields.io/badge/documentation-v0.7.x-blue.svg">![documentation</a>](https://github.com/Hackbrett3X/forejs#examples)
+<a href="https://img.shields.io/badge/what's%20new-v0.7.x-orange.svg">![What's new</a>](https://github.com/Hackbrett3X/forejs/blob/master/WHATSNEW.md)
+
+
 ForeJs is a lightweight but powerful module which provides rich functionality to organize asynchronous JavaScript code.
 Linearize nested callback functions to simple call chains or let foreJs automatically resolve dependencies between the 
 single functions and figure out the perfect execution order. Asynchronously process iterables and collect the modified 
@@ -31,12 +39,23 @@ fore({
 });
 ```
 
-See below for documentation and more examples.
+See below for <a href="#documentation">documentation</a> and more <a href="#examples">examples</a>.
 
 ## Installation
 ```
 $ npm install --save forejs
 ```
+
+#### For browser usage
+```
+$ bower install forejs
+```
+Load via script-tags, <a href="http://requirejs.org/">RequireJs (amd)</a> or CommonJs, e.g.:
+```html
+<script src="bower_components/forejs/dist/forejs.min.js"></script>
+```
+
+<a name="examples"></a>
 
 ## Examples
 #### Chain mode
@@ -65,7 +84,7 @@ const ref = fore.ref;
 
 fore({
   file: fs.readFile.inject.args("some/file", "utf-8"),
-  // in auto mode, dependencies are also injected  
+  // in auto mode, dependencies are injections, too 
   modified: modify.inject.args(ref("file")),
   // it is possible to write these as array:
   customized: ["modified", modified => {
@@ -78,6 +97,38 @@ It is also possible to inject values or dependencies as ```this``` argument:
 ```js
 someFunction.inject.this(ref("myObject"));
 ```
+
+<a name="orInjections"></a>
+
+#### Or-injections
+Sometimes it is convenient to merge several execution branches into a single variable. This can be done via so called
+"or-injections". Simply put all dependencies into one injection separated by "|": 
+```js
+fore({
+  // two files, both should be objects providing an output path and the respective content:
+  // e.g. {outPath: "out/file1, data: "My content"}
+  file1: ...,
+  file2: ...,
+  // will be called twice: once for each file 
+  out: ["file1|file2", (file, callback) => fs.writeFile(file.outPath, file.data, callback)]
+});
+```
+
+<a name="moreSyntaxSugar"></a>
+
+#### More syntax sugar
+Occasionally you want to chain some function calls in auto mode without giving each result a separate name. You can do
+this using an array:
+```js
+fore({
+  myPath: getMyPath,
+  // Read the file and call JSON.parse immediately after:
+  // The array consists of a list of injections followed by any number of functions. The injections 
+  // are applied to the first function.
+  jsonObject: ["myPath", (myPath, callback) => fs.readFile(myPath, callback), data => JSON.parse(data)]
+});
+```
+
 #### Catching errors
 Errors can be caught either directly at a single function:
 ```js
@@ -142,6 +193,9 @@ fore({
 ```
 
 For more examples take a look at the build and test files.
+
+<a name="documentation"></a>
+
 ## Documentation
 ### Classes
 
@@ -265,6 +319,7 @@ The main entry point. Supports two modes:<ul>  <li>chain: In chain mode, <code
     * <a href="#fore.collect">.collect(fn)</a> ⇒ <code><a href="#Injector">Injector</a></code>
     * <a href="#fore.reduce">.reduce(fn, initialValue)</a> ⇒ <code><a href="#Injector">Injector</a></code>
     * <a href="#fore.ref">.ref(id)</a>
+    * [.config([properties])](#fore.config)
 
 <a name="fore.try"></a>
 
@@ -334,6 +389,18 @@ References the result of another function when using auto mode. To be used withi
 | Param | Type | Description |
 | --- | --- | --- |
 | id | <code>String</code> | The id to reference. |
+
+<a name="fore.config"></a>
+
+#### fore.config([properties])
+Configures foreJs.
+
+**Kind**: static method of <code><a href="#fore">fore</a></code>  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| [properties] | <code>object</code> | The configuration object. |
+| [properties.dontHackFunctionPrototype] | <code>boolean</code> | Set <code>true</code> to keep <code>Function.prototype</code>   clean and omit the <a href="#inject">inject</a> getter. <a href="#inject">inject</a> now exists as static property of <a href="#fore">fore</a> instead:   <code>fore.inject(myFunction).args(...)</code>. Default: <code>false</code> |
 
 <a name="inject"></a>
 
