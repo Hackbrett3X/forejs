@@ -42,7 +42,7 @@ fore.try({
 
   browserVersion: ["code", code => {
     code = replaceModuleExports("return $1;", code);
-    code = wrapWithUmdHeader(code, "forejs");
+    code = wrapWithUmdHeader(code, "fore");
     code =  uglifyJs.minify(code, uglifyOptions).code;
     return {code, outPath: path.join(distPath, browserName)};
   }],
