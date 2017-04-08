@@ -46,6 +46,15 @@ See below for [documentation](#documentation) and more [examples](#examples).
 $ npm install --save forejs
 ```
 
+#### For browser usage
+```
+$ bower install forejs
+```
+Load via script-tags, [RequireJs (amd)](http://requirejs.org/) or CommonJs, e.g.:
+```html
+<script src="bower_components/forejs/dist/forejs.min.js"></script>
+```
+
 <a name="examples"></a>
 
 ## Examples
