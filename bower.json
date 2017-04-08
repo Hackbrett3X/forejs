@@ -1,0 +1,26 @@
+{
+  "name": "forejs",
+  "description": "Lightweight module which provides powerful functionality to organize asynchronous JavaScript code.",
+  "main": "dist/forejs.min.js",
+  "authors": [{
+    "name": "Lukas Holländer",
+    "email": "hollaender.lukas@googlemail.com"
+  }],
+  "license": "MIT",
+  "keywords": [
+    "async",
+    "callback",
+    "callback-hell",
+    "promise",
+    "control-flow",
+    "for-comprehension",
+    "utility"
+  ],
+  "homepage": "https://github.com/Hackbrett3X/forejs",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test"
+  ]
+}
