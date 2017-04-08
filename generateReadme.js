@@ -24,7 +24,7 @@ module.exports = function generateReadme(code) {
 
       render: ["filteredData", "template", (data, template) => jsdoc2md.render({data, template, "heading-depth": 3})],
 
-      fixLinks: ["render", renderResult => renderResult.replace(/\[([^\]\n]+)]\(([^)\n]+)\)/g, '<a href="$2">$1</a>')],
+      fixLinks: ["render", renderResult => renderResult.replace(/([^!])\[([^\[\]\n]+)]\(([^)\n]+)\)/g, '$1<a href="$3">$2</a>')],
 
       _: ["fixLinks", resolve]
     }).catch(reject);
