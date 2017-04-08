@@ -67,7 +67,7 @@ const ref = fore.ref;
 
 fore({
   file: fs.readFile.inject.args("some/file", "utf-8"),
-  // in auto mode, dependencies are also injected  
+  // in auto mode, dependencies are injections, too 
   modified: modify.inject.args(ref("file")),
   // it is possible to write these as array:
   customized: ["modified", modified => {
@@ -80,6 +80,38 @@ It is also possible to inject values or dependencies as ```this``` argument:
 ```js
 someFunction.inject.this(ref("myObject"));
 ```
+
+<a name="orInjections"></a>
+
+#### Or-injections
+Sometimes it is convenient to merge several execution branches into a single variable. This can be done via so called
+"or-injections". Simply put all dependencies into one injection separated by "|": 
+```js
+fore({
+  // two files, both should be objects providing an output path and the respective content:
+  // e.g. {outPath: "out/file1, data: "My content"}
+  file1: ...,
+  file2: ...,
+  // will be called twice: once for each file 
+  out: ["file1|file2", (file, callback) => fs.writeFile(file.outPath, file.data, callback)]
+});
+```
+
+<a name="moreSyntaxSugar"></a>
+
+#### More syntax sugar
+Occasionally you want to chain some function calls in auto mode without giving each result a separate name. You can do
+this using an array:
+```js
+fore({
+  myPath: getMyPath,
+  // Read the file and call JSON.parse immediately after:
+  // The array consists of a list of injections followed by any number of functions. The injections 
+  // are applied to the first function.
+  jsonObject: ["myPath", (myPath, callback) => fs.readFile(myPath, callback), data => JSON.parse(data)]
+});
+```
+
 #### Catching errors
 Errors can be caught either directly at a single function:
 ```js
