@@ -2,8 +2,8 @@
 
 [![npm version](https://img.shields.io/npm/v/forejs.svg)](https://www.npmjs.com/package/forejs)
 [![bower version](https://img.shields.io/bower/v/forejs.svg)](https://github.com/Hackbrett3X/forejs)
-[![examples](https://img.shields.io/badge/examples-forejs-brightgreen.svg)](https://github.com/Hackbrett3X/forejs#examples)
-[![documentation](https://img.shields.io/badge/documentation-v0.7.x-blue.svg)](https://github.com/Hackbrett3X/forejs#examples)
+[![examples](https://img.shields.io/badge/examples-forejs-brightgreen.svg)](#examples)
+[![documentation](https://img.shields.io/badge/documentation-v0.7.x-blue.svg)](#documentation)
 [![What's new](https://img.shields.io/badge/what's%20new-v0.7.x-orange.svg)](https://github.com/Hackbrett3X/forejs/blob/master/WHATSNEW.md)
 
 
