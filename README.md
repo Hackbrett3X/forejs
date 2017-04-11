@@ -29,7 +29,7 @@ const fore = require("forejs");
 fore({
   // provide result of "asyncFunction" as "asyncResult"
   "asyncResult": asyncFunction,
-  // promises are supported, as well
+  // promises are supported as well
   "promiseResult": promiseReturningFunction,
   // inject results of the above functions and the constant value "42" into "anotherAsyncFunction"
   "combinedResult": ["asyncResult", 42, "promiseResult", anotherAsyncFunction],
@@ -222,16 +222,16 @@ For more examples take a look at the build and test files.
   <li>Node-style asynchronous function: Accepts a number of arbitrary arguments followed by an error-first callback
       function. The function must call this callback with either a non-null first argument to signal an error or
       with null as first argument followed by any number of &quot;return values&quot;.
-      In chain mode those &quot;return values&quot; are directly passed to the next function.
+      In chain mode those &quot;return values&quot; are directly passed on to the next function.
       In auto mode those values are passed to all dependent functions. If more than one value is passed to the
       callback, those values are passed as array to the dependents. Additionally all arguments but the last
       (callback) must be eliminated by injections (<a href="#inject">inject</a>).</li>
   <li>Synchronous function: Sometimes you want to mix synchronous functions into asynchronous code. This is perfectly
       ok: Simply put a plain <code>return</code> statement and ignore the callback. If you want to return
       <code>undefined</code> on purpose you will need to invoke the callback, however.</li>
-  <li>Promise: Promises are supported, as well. Plain promises must be in a root position.</li>
+  <li>Promise: Promises are supported as well. Plain promises must be in a root position.</li>
   <li>Promise returning function: A function may as well return a promise instead of invoking the callback.
-      Unfortunately the function will still get passed a callback as last argument. If your function cannot cope
+      Unfortunately, the function will still get passed a callback as last argument. If your function cannot cope
       with the extra argument, simply wrap it with another function.</li>
   <li>Array: As shown in <a href="Injector.prototype.args">Injector.prototype.args</a> injections can be syntactically sugared. If you are looking
       for a way to iterate over arrays see <a href="#fore.each">each</a>.</li>
@@ -286,7 +286,7 @@ Injects a constant value or dependency as <code>this</code> argument. Use <a hre
 <a name="Injector+catch"></a>
 
 #### injector.catch(errorHandler) ⇒ <code><a href="#Injector">Injector</a></code>
-Attaches an error handler to this function that will be called if the function invokes its callback with a non-nullfirst argument. This error will be passed as first argument to the errorHandler. Once an error occurs, the propagationof this execution branch will be stopped.It also possible to register a general error handler to the entire fore-block using <a href="#fore.try">try</a>. Error handlersattached directly to the function are prioritized.If an error occurs and no error handler has been registered the execution will break. So catch your errors!
+Attaches an error handler to this function that will be called if the function invokes its callback with a non-nullfirst argument. This error will be passed as first argument to the errorHandler. Once an error occurs, the propagationof this execution branch will be stopped.It is also possible to register a general error handler to the entire fore-block using <a href="#fore.try">try</a>. Error handlersattached directly to the function are prioritized.If an error occurs and no error handler has been registered the execution will break. So catch your errors!
 
 **Kind**: instance method of <code><a href="#Injector">Injector</a></code>  
 **Chainable**  
@@ -299,7 +299,7 @@ Attaches an error handler to this function that will be called if the function i
 <a name="fore"></a>
 
 ### fore(functions, arguments)
-The main entry point. Supports two modes:<ul>  <li>chain: In chain mode, <code>fore</code> accepts a list of functions that are executed sequentially.</li>  <li>auto: In auto mode, <code>fore</code> accepts an object with identifiers as keys and functions as values. The      identifiers can be referenced by other functions to retrieve its "return value" (see <a href="#inject">inject</a> and      <a href="#fore.ref">ref</a>). ForeJs now figures out the perfect execution order and runs as much code in parallel as      possible.</li></ul>The functions passed may have one of the following forms:<ul>  <li>Node-style asynchronous function: Accepts a number of arbitrary arguments followed by an error-first callback      function. The function must call this callback with either a non-null first argument to signal an error or      with null as first argument followed by any number of "return values".      In chain mode those "return values" are directly passed to the next function.      In auto mode those values are passed to all dependent functions. If more than one value is passed to the      callback, those values are passed as array to the dependents. Additionally all arguments but the last      (callback) must be eliminated by injections (<a href="#inject">inject</a>).</li>  <li>Synchronous function: Sometimes you want to mix synchronous functions into asynchronous code. This is perfectly      ok: Simply put a plain <code>return</code> statement and ignore the callback. If you want to return      <code>undefined</code> on purpose you will need to invoke the callback, however.</li>  <li>Promise: Promises are supported, as well. Plain promises must be in a root position.</li>  <li>Promise returning function: A function may as well return a promise instead of invoking the callback.      Unfortunately the function will still get passed a callback as last argument. If your function cannot cope      with the extra argument, simply wrap it with another function.</li>  <li>Array: As shown in <a href="Injector.prototype.args">Injector.prototype.args</a> injections can be syntactically sugared. If you are looking      for a way to iterate over arrays see <a href="#fore.each">each</a>.</li>  <li>Instances of <a href="#Injector">Injector</a>: An Injector is simply the wrapping type of injected functions.</li></ul>
+The main entry point. Supports two modes:<ul>  <li>chain: In chain mode, <code>fore</code> accepts a list of functions that are executed sequentially.</li>  <li>auto: In auto mode, <code>fore</code> accepts an object with identifiers as keys and functions as values. The      identifiers can be referenced by other functions to retrieve its "return value" (see <a href="#inject">inject</a> and      <a href="#fore.ref">ref</a>). ForeJs now figures out the perfect execution order and runs as much code in parallel as      possible.</li></ul>The functions passed may have one of the following forms:<ul>  <li>Node-style asynchronous function: Accepts a number of arbitrary arguments followed by an error-first callback      function. The function must call this callback with either a non-null first argument to signal an error or      with null as first argument followed by any number of "return values".      In chain mode those "return values" are directly passed on to the next function.      In auto mode those values are passed to all dependent functions. If more than one value is passed to the      callback, those values are passed as array to the dependents. Additionally all arguments but the last      (callback) must be eliminated by injections (<a href="#inject">inject</a>).</li>  <li>Synchronous function: Sometimes you want to mix synchronous functions into asynchronous code. This is perfectly      ok: Simply put a plain <code>return</code> statement and ignore the callback. If you want to return      <code>undefined</code> on purpose you will need to invoke the callback, however.</li>  <li>Promise: Promises are supported as well. Plain promises must be in a root position.</li>  <li>Promise returning function: A function may as well return a promise instead of invoking the callback.      Unfortunately, the function will still get passed a callback as last argument. If your function cannot cope      with the extra argument, simply wrap it with another function.</li>  <li>Array: As shown in <a href="Injector.prototype.args">Injector.prototype.args</a> injections can be syntactically sugared. If you are looking      for a way to iterate over arrays see <a href="#fore.each">each</a>.</li>  <li>Instances of <a href="#Injector">Injector</a>: An Injector is simply the wrapping type of injected functions.</li></ul>
 
 **Kind**: global function  
 
@@ -324,7 +324,7 @@ The main entry point. Supports two modes:<ul>  <li>chain: In chain mode, <code
 <a name="fore.try"></a>
 
 #### fore.try() ⇒ <code>Object</code>
-Wraps <a href="#fore">fore</a> with a try-catch mechanism, which registers a general error handler for all provided functions.Once any of these functions "returns" an error this error handler will be invoked and the propagation of therespective execution branch will stopped.This error handler can be shadowed for single functions using <a href="Injector.prototype.catch">Injector.prototype.catch</a>.
+Wraps <a href="#fore">fore</a> with a try-catch mechanism, which registers a general error handler for all provided functions.Once any of these functions "returns" an error this error handler will be invoked and the propagation of therespective execution branch will be stopped.This error handler can be shadowed for single functions using <a href="Injector.prototype.catch">Injector.prototype.catch</a>.
 
 **Kind**: static method of <code><a href="#fore">fore</a></code>  
 **Returns**: <code>Object</code> - An object with a single function <code>catch</code> to pass the error handler to.  
@@ -352,7 +352,7 @@ Successively returns all values the iterable provides. Values will be processed 
 <a name="fore.collect"></a>
 
 #### fore.collect(fn) ⇒ <code><a href="#Injector">Injector</a></code>
-The counterpart to <a href="#fore.each">each</a>. Collects all values that were generated by <a href="#fore.each">each</a> and modified byin-between functions. The results will be passed to <code>fn</code> as array. If it depends on multiple iterables<code>fore.collect</code> waits for all branches to finish and each result array will passed as separate argument.Naturally for asynchronous code the result array will not necessarily have the same order as the input.
+The counterpart to <a href="#fore.each">each</a>. Collects all values that were generated by <a href="#fore.each">each</a> and modified byin-between functions. The results will be passed on to <code>fn</code> as array. If it depends on multiple iterables<code>fore.collect</code> waits for all branches to finish and each result array will be passed on as separate argument.Naturally for asynchronous code the result array will not necessarily have the same order as the input.
 
 **Kind**: static method of <code><a href="#fore">fore</a></code>  
 **Returns**: <code><a href="#Injector">Injector</a></code> - An injector which can be used to inject arguments to the function.  
@@ -365,7 +365,7 @@ The counterpart to <a href="#fore.each">each</a>. Collects all values that were 
 <a name="fore.reduce"></a>
 
 #### fore.reduce(fn, initialValue) ⇒ <code><a href="#Injector">Injector</a></code>
-Another counterpart to <a href="#fore.each">each</a>. Behaves much like <a href="#fore.collect">collect</a> but provides the results not as arraybut in a fashion similar to <a href="Array.prototype.reduce">Array.prototype.reduce</a>: <code>fn</code> will be called once for each element ofthe result. It will get passed the accumulator followed by dependency result(s) followed by a callback. The"return value" of this call will be the new accumulator for the next invocation. For the first invocationthe accumulation variable is <code>initialValue</code>.If there are more than one dependencies (and several of these originate in a <a href="#fore.each">each</a>) <code>fn</code> willbe called once for every possible combination of the incoming values.Likewise, no specific execution order can be guaranteed.
+Another counterpart to <a href="#fore.each">each</a>. Behaves much like <a href="#fore.collect">collect</a> but provides the results not as arraybut in a fashion similar to <a href="Array.prototype.reduce">Array.prototype.reduce</a>: <code>fn</code> will be called once for each element ofthe result. It will receive the accumulator followed by injections followed by a callback<code>(accumulator, injections, ..., callback)</code>. The "return value" of this call will be the new accumulatorfor the next invocation. For the first invocation the accumulation variable is <code>initialValue</code>.If there is more than one dependency (and several of these originate in a <a href="#fore.each">each</a>) <code>fn</code> willbe called once for every possible combination of the incoming values.Likewise, no specific execution order can be guaranteed.
 
 **Kind**: static method of <code><a href="#fore">fore</a></code>  
 **Returns**: <code><a href="#Injector">Injector</a></code> - An injector which can be used to inject arguments to the function.  
@@ -377,7 +377,7 @@ Another counterpart to <a href="#fore.each">each</a>. Behaves much like <a href=
 
 **Example**  
 ```js
-fore(    fore.each([1, 2, 3),    plusOne,    fore.reduce((accumulation, value, callback) => callback(null, accumulation * value), 1),    console.log    // result: 1 * 2 * 3 * 4 = 24)
+fore(    fore.each([1, 2, 3, 4]),    plusOne,    fore.reduce((accumulator, value, callback) => callback(null, accumulator * value), 1),    console.log    // result: 1 * 2 * 3 * 4 = 24)
 ```
 <a name="fore.ref"></a>
 
