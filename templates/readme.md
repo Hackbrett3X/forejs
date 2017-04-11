@@ -29,7 +29,7 @@ const fore = require("forejs");
 fore({
   // provide result of "asyncFunction" as "asyncResult"
   "asyncResult": asyncFunction,
-  // promises are supported, as well
+  // promises are supported as well
   "promiseResult": promiseReturningFunction,
   // inject results of the above functions and the constant value "42" into "anotherAsyncFunction"
   "combinedResult": ["asyncResult", 42, "promiseResult", anotherAsyncFunction],
